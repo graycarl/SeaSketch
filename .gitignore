@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node / frontend
+node_modules/
+dist/
+.pnp/
+.pnpm-store/
+.yarn/
+.next/
+.cache/
+coverage/
+
+# Tauri / Rust
+/src-tauri/target/
+src-tauri/target/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Misc
+*.log
+*.lockb
+.idea/
+.vscode/
+.DS_Store?
