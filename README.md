@@ -43,3 +43,21 @@ Local JSON data persisted under app data dir
 6. Implement the editor + 1s debounce preview and error handling
 7. Hook persistence into every structural/content change
 8. Polish UI, test flows, package for macOS
+
+---
+
+# Development Notes
+
+This repo uses the official **Tauri + React + TypeScript (Vite)** template as the starting point.
+
+## Recommended IDE Setup
+- [VS Code](https://code.visualstudio.com/) with the [Tauri extension](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
+- [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+
+## Useful Scripts
+- `npm run dev` – start the Vite dev server
+- `npm run tauri dev` – run the Tauri desktop app in development
+- `npm run build` – type-check and build the frontend
+- `npm run tauri build` – produce a distributable macOS build
+
+Package management is handled via **npm** (pnpm intentionally not installed).
