@@ -3,15 +3,15 @@
 ## 1. Requirement Summary
 - macOS desktop app named **SeaSketch** built with **Tauri + React**
 - Users author Mermaid diagrams locally with delayed live preview (1 second after typing stops)
-- App maintains an internal hierarchy: **Groups** contain **Files**; files store Mermaid text
-- Support create/rename/delete for both groups and files
+- App maintains an internal hierarchy: **Folders** contain **Files**; files store Mermaid text
+- Support create/rename/delete for both folders and files
 - Persist entire structure and contents via **Tauri storage plugin** so state survives restarts
 
 ## 2. System Architecture
 ```
 ┌───────────────────────────────────────────────────┐
 │ React Frontend                                    │
-│  - Group/File tree component                      │
+│  - Folder/File tree component                     │
 │  - Editor component (textarea or Monaco)          │
 │  - Preview component (mermaid.js)                 │
 │  - Global state (Context/Zustand)                 │
@@ -36,28 +36,28 @@ interface FileNode {
   content: string; // Mermaid text
 }
 
-interface GroupNode {
+interface FolderNode {
   id: string;
   name: string;
   files: FileNode[];
 }
 
 interface AppState {
-  groups: GroupNode[];
-  currentGroupId: string | null;
+  folders: FolderNode[];
+  currentFolderId: string | null;
   currentFileId: string | null;
 }
 ```
 
 ## 3. Frontend Design
 ### Layout
-- **Sidebar (left)**: tree of groups and their files with CRUD actions
+- **Sidebar (left)**: tree of folders and their files with CRUD actions
 - **Editor (center)**: Mermaid text editor; inline rename for file name
 - **Preview (right)**: renders SVG/HTML output via `mermaid.render`
 
 ### State Management
 - Use React Context or Zustand to hold `AppState`
-- Provide actions: `createGroup`, `renameGroup`, `deleteGroup`, `createFile`, `renameFile`, `deleteFile`, `selectFile`, `updateContent`
+- Provide actions: `createFolder`, `renameFolder`, `deleteFolder`, `createFile`, `renameFile`, `deleteFile`, `selectFile`, `updateContent`
 - Hook `useEffect` on state changes to call `saveState` (debounced to avoid thrashing)
 
 ### Debounced Preview
@@ -73,7 +73,7 @@ interface AppState {
   - `#[tauri::command] async fn load_state(store: State<'_, Store>) -> Result<AppState, String>`
   - `#[tauri::command] async fn save_state(store: State<'_, Store>, state: AppState) -> Result<(), String>`
 - `Store` file path (e.g., `seasketch-state.json`) lives in app data directory
-- On load, if file missing/empty → create default state with one group & file
+- On load, if file missing/empty → create default state with one folder & file
 
 ## 5. Persistence Strategy
 - Frontend invokes `load_state` on startup → populate context
@@ -83,7 +83,7 @@ interface AppState {
 ## 6. Error Handling & UX
 - Show spinner/placeholders while loading initial state
 - Surface Mermaid parse errors in preview pane with friendly message
-- Confirm destructive operations (delete group/file)
+- Confirm destructive operations (delete folder/file)
 - If persistence fails, show toast and retry option
 
 ## 7. Task Breakdown
@@ -97,7 +97,7 @@ interface AppState {
 4. **State Layer**
    - Define TypeScript interfaces and Zustand/Context store with actions
 5. **UI Components**
-   - Sidebar for group/file tree with CRUD controls
+   - Sidebar for folder/file tree with CRUD controls
    - Editor component with content binding
    - Preview component using Mermaid render + debounce
 6. **Persistence Wiring**

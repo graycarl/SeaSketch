@@ -1,0 +1,70 @@
+import { useSeaSketchStore } from "../store";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { useEffect, useMemo, useRef, useState } from "react";
+import mermaid from "mermaid";
+import "./PreviewPane.css";
+
+mermaid.initialize({ startOnLoad: false, theme: "default" });
+
+export function PreviewPane() {
+  const { folders, currentFolderId, currentFileId } = useSeaSketchStore();
+  const currentFolder = useMemo(
+    () => folders.find((folder) => folder.id === currentFolderId),
+    [folders, currentFolderId],
+  );
+  const currentFile = useMemo(
+    () => currentFolder?.files.find((file) => file.id === currentFileId),
+    [currentFolder, currentFileId],
+  );
+  const debouncedContent = useDebouncedValue(currentFile?.content ?? "", 1000);
+  const [error, setError] = useState<string | null>(null);
+  const lastSuccessfulSvg = useRef<string>("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!currentFile) {
+      setError(null);
+      lastSuccessfulSvg.current = "";
+      if (containerRef.current) containerRef.current.innerHTML = "";
+      return;
+    }
+
+    const renderDiagram = async () => {
+      try {
+        const { svg } = await mermaid.render(`diagram-${currentFile.id}`, debouncedContent);
+        lastSuccessfulSvg.current = svg;
+        if (containerRef.current) containerRef.current.innerHTML = svg;
+        setError(null);
+      } catch (err) {
+        console.error("Mermaid render error", err);
+        setError((err as Error).message);
+        if (containerRef.current) containerRef.current.innerHTML = lastSuccessfulSvg.current;
+      }
+    };
+
+    if (debouncedContent.trim()) {
+      renderDiagram();
+    } else {
+      if (containerRef.current) containerRef.current.innerHTML = "";
+      setError("Diagram is empty");
+    }
+  }, [currentFile, debouncedContent]);
+
+  if (!currentFile) {
+    return (
+      <div className="preview-pane empty">
+        <p>No diagram selected</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="preview-pane">
+      <div className="preview-header">
+        <h2>Preview</h2>
+        {error && <span className="error-text">{error}</span>}
+      </div>
+      <div className="preview-content" ref={containerRef} />
+    </div>
+  );
+}

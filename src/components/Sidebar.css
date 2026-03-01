@@ -26,12 +26,12 @@
   cursor: pointer;
 }
 
-.group-list {
+.folder-list {
   flex: 1;
   overflow-y: auto;
 }
 
-.group-section {
+.folder-section {
   margin-bottom: 12px;
   padding: 12px;
   border-radius: 12px;
@@ -40,14 +40,14 @@
   position: relative;
 }
 
-.group-header {
+.folder-header {
   display: flex;
   align-items: center;
   gap: 8px;
   padding-right: 72px;
 }
 
-.group-name {
+.folder-name {
   flex: 1;
   border: none;
   font-weight: 600;
@@ -56,7 +56,7 @@
   min-width: 0;
 }
 
-.group-actions {
+.folder-actions {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -66,7 +66,7 @@
   gap: 6px;
 }
 
-.group-actions button {
+.folder-actions button {
   width: 28px;
   height: 28px;
   border: none;

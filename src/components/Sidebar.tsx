@@ -5,15 +5,15 @@ import "./Sidebar.css";
 
 export function Sidebar() {
   const {
-    groups,
-    currentGroupId,
+    folders,
+    currentFolderId,
     currentFileId,
     selectFile,
-    createGroup,
+    createFolder,
     createFile,
-    renameGroup,
+    renameFolder,
     renameFile,
-    deleteGroup,
+    deleteFolder,
     deleteFile,
   } = useSeaSketchStore();
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
@@ -37,37 +37,37 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <h2>Groups</h2>
-        <button onClick={() => createGroup()}>+</button>
+        <h2>Folders</h2>
+        <button onClick={() => createFolder()}>+</button>
       </div>
-      <div className="group-list">
-        {groups.map((group) => (
-          <div key={group.id} className="group-section">
-            <div className="group-header">
+      <div className="folder-list">
+        {folders.map((folder) => (
+          <div key={folder.id} className="folder-section">
+            <div className="folder-header">
               <input
-                className="group-name"
-                value={group.name}
-                onChange={(e) => renameGroup(group.id, e.target.value)}
+                className="folder-name"
+                value={folder.name}
+                onChange={(e) => renameFolder(folder.id, e.target.value)}
               />
-              <div className="group-actions">
-                <button onClick={() => createFile(group.id)} title="New file">
+              <div className="folder-actions">
+                <button onClick={() => createFile(folder.id)} title="New file">
                   +
                 </button>
-                <button onClick={() => deleteGroup(group.id)} title="Delete group">
+                <button onClick={() => deleteFolder(folder.id)} title="Delete folder">
                   🗑
                 </button>
               </div>
             </div>
             <ul className="file-list">
-              {group.files.map((file) => {
-                const isActive = currentGroupId === group.id && currentFileId === file.id;
+              {folder.files.map((file) => {
+                const isActive = currentFolderId === folder.id && currentFileId === file.id;
                 const isEditing = editingFileId === file.id;
 
                 return (
                   <li
                     key={file.id}
                     className={classNames("file-item", { active: isActive })}
-                    onClick={() => selectFile(group.id, file.id)}
+                    onClick={() => selectFile(folder.id, file.id)}
                     onDoubleClick={(e) => {
                       e.stopPropagation();
                       handleStartEditing(file.id);
@@ -83,7 +83,7 @@ export function Sidebar() {
                         className="file-name-input"
                         value={file.name}
                         onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => renameFile(group.id, file.id, e.target.value)}
+                        onChange={(e) => renameFile(folder.id, file.id, e.target.value)}
                         onBlur={handleStopEditing}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
@@ -99,7 +99,7 @@ export function Sidebar() {
                       className="delete-file"
                       onClick={(e) => {
                         e.stopPropagation();
-                        deleteFile(group.id, file.id);
+                        deleteFile(folder.id, file.id);
                       }}
                     >
                       ×
