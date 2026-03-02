@@ -1,5 +1,6 @@
 import classNames from "classnames";
 import { useEffect, useRef, useState } from "react";
+import { FilePlus, FolderOpen, FolderPlus, Trash2, FileText } from "lucide-react";
 import { useSeaSketchStore } from "../store";
 import "./Sidebar.css";
 
@@ -43,7 +44,6 @@ export function Sidebar() {
     }
   }, [editingFolderId]);
 
-  // 点击 delete-confirm 区域以外的地方自动取消
   useEffect(() => {
     if (!pendingDelete) return;
     const handleMouseDown = (e: MouseEvent) => {
@@ -76,13 +76,20 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <h2>Folders</h2>
-        <button onClick={() => createFolder()}>+</button>
+        <span className="sidebar-title">Folders</span>
+        <button
+          className="sidebar-header-btn"
+          onClick={() => createFolder()}
+          title="New folder"
+        >
+          <FolderPlus size={15} />
+        </button>
       </div>
       <div className="folder-list">
         {folders.map((folder) => (
           <div key={folder.id} className="folder-section">
             <div className="folder-header">
+              <FolderOpen size={14} className="folder-icon" />
               {editingFolderId === folder.id ? (
                 <input
                   ref={(el) => {
@@ -110,8 +117,12 @@ export function Sidebar() {
                 </span>
               )}
               <div className="folder-actions">
-                <button onClick={() => createFile(folder.id)} title="New file">
-                  +
+                <button
+                  className="folder-action-btn"
+                  onClick={() => createFile(folder.id)}
+                  title="New file"
+                >
+                  <FilePlus size={13} />
                 </button>
                 {isFolderDeletePending(folder.id) ? (
                   <div className="delete-confirm" ref={deleteConfirmRef}>
@@ -119,17 +130,19 @@ export function Sidebar() {
                       className="delete-confirm-ok"
                       onClick={() => handleDeleteConfirm()}
                     >
+                      <Trash2 size={11} />
                       删除
                     </button>
                   </div>
                 ) : (
                   <button
+                    className="folder-action-btn danger"
                     title="Delete folder"
                     onClick={() =>
                       setPendingDelete({ type: "folder", folderId: folder.id })
                     }
                   >
-                    🗑
+                    <Trash2 size={13} />
                   </button>
                 )}
               </div>
@@ -151,6 +164,7 @@ export function Sidebar() {
                       setEditingFileId(file.id);
                     }}
                   >
+                    <FileText size={13} className="file-icon" />
                     {isEditing ? (
                       <input
                         ref={(el) => {
@@ -184,6 +198,7 @@ export function Sidebar() {
                             handleDeleteConfirm();
                           }}
                         >
+                          <Trash2 size={11} />
                           删除
                         </button>
                       </div>
@@ -198,8 +213,9 @@ export function Sidebar() {
                             fileId: file.id,
                           });
                         }}
+                        title="Delete file"
                       >
-                        ×
+                        <Trash2 size={12} />
                       </button>
                     )}
                   </li>

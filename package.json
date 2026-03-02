@@ -15,6 +15,7 @@
     "@tauri-apps/plugin-shell": "^2.3.5",
     "@tauri-apps/plugin-store": "^2.4.2",
     "classnames": "^2.5.1",
+    "lucide-react": "^0.576.0",
     "mermaid": "^11.12.3",
     "nanoid": "^5.1.6",
     "react": "^19.1.0",

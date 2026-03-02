@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import mermaid from "mermaid";
 import "./PreviewPane.css";
 
-mermaid.initialize({ startOnLoad: false, theme: "default" });
+mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
 export function PreviewPane() {
   const { folders, currentFolderId, currentFileId } = useSeaSketchStore();

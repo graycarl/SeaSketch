@@ -1,24 +1,37 @@
 .editor-pane {
   flex: 1;
-  padding: 16px;
+  padding: 12px;
   display: flex;
+  background: #0f1117;
 }
 
 .editor-pane textarea {
   width: 100%;
   height: 100%;
   resize: none;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 12px;
+  border: 1px solid #2a3147;
+  border-radius: 8px;
+  padding: 12px 14px;
   font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.6;
+  background: #1a1f2e;
+  color: #e2e8f0;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.editor-pane textarea:focus {
+  border-color: #4f7ef8;
+}
+
+.editor-pane textarea::selection {
+  background: rgba(79, 126, 248, 0.25);
 }
 
 .editor-pane.empty {
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
-  font-size: 16px;
+  color: #4a5568;
+  font-size: 14px;
 }
