@@ -16,7 +16,7 @@ export function PreviewPane() {
     () => currentFolder?.files.find((file) => file.id === currentFileId),
     [currentFolder, currentFileId],
   );
-  const debouncedContent = useDebouncedValue(currentFile?.content ?? "", 1000);
+  const debouncedContent = useDebouncedValue(currentFile?.content ?? "", 400);
   const [error, setError] = useState<string | null>(null);
   const lastSuccessfulSvg = useRef<string>("");
   const containerRef = useRef<HTMLDivElement>(null);

@@ -1,4 +1,5 @@
 import { useSeaSketchStore } from "../store";
+import { CodeEditor } from "./CodeEditor";
 import "./EditorPane.css";
 
 export function EditorPane() {
@@ -16,10 +17,10 @@ export function EditorPane() {
 
   return (
     <div className="editor-pane">
-      <textarea
+      <CodeEditor
+        key={currentFile.id}
         value={currentFile.content}
-        onChange={(e) => updateFileContent(currentFolder!.id, currentFile.id, e.target.value)}
-        spellCheck={false}
+        onChange={(value) => updateFileContent(currentFolder!.id, currentFile.id, value)}
       />
     </div>
   );
