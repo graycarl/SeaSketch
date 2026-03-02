@@ -31,6 +31,35 @@ body {
   height: 100%;
   display: flex;
   background: #0f1117;
+  position: relative;
+}
+
+.pane-resizer {
+  width: 1px;
+  background: #2a3147;
+  cursor: col-resize;
+  transition: background 0.15s ease, width 0.15s ease;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.pane-resizer::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  left: -6px;
+  right: -6px;
+}
+
+.pane-resizer:hover {
+  background: rgba(79, 126, 248, 0.6);
+  width: 4px;
+}
+
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .app-loading {

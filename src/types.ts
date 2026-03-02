@@ -10,8 +10,14 @@ export interface FolderNode {
   files: FileNode[];
 }
 
+export interface LayoutState {
+  sidebarWidth?: number;
+  previewWidth?: number;
+}
+
 export interface AppStateData {
   folders: FolderNode[];
   currentFolderId: string | null;
   currentFileId: string | null;
+  layout?: LayoutState;
 }

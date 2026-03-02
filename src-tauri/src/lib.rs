@@ -22,10 +22,18 @@ pub struct FolderNode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LayoutState {
+    pub sidebar_width: Option<f64>,
+    pub preview_width: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppState {
     pub folders: Vec<FolderNode>,
     pub current_folder_id: Option<String>,
     pub current_file_id: Option<String>,
+    #[serde(default)]
+    pub layout: Option<LayoutState>,
 }
 
 impl Default for AppState {
@@ -44,6 +52,7 @@ impl Default for AppState {
             }],
             current_folder_id: Some(folder_id),
             current_file_id: Some(file_id),
+            layout: None,
         }
     }
 }
