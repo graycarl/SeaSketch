@@ -74,7 +74,7 @@
   align-items: center;
   gap: 6px;
   padding: 5px 8px 5px 10px;
-  cursor: default;
+  cursor: pointer;
   user-select: none;
   position: relative;
   min-height: 30px;

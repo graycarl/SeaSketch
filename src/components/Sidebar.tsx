@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import { useEffect, useRef, useState } from "react";
-import { FilePlus, FolderOpen, FolderPlus, Trash2, FileText } from "lucide-react";
+import { FilePlus, Folder, FolderOpen, FolderPlus, Trash2, FileText } from "lucide-react";
 import { useSeaSketchStore } from "../store";
 import "./Sidebar.css";
 
@@ -25,10 +25,25 @@ export function Sidebar() {
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   const fileEditingInputRef = useRef<HTMLInputElement | null>(null);
   const folderEditingInputRef = useRef<HTMLInputElement | null>(null);
   const deleteConfirmRef = useRef<HTMLDivElement | null>(null);
+
+  // 当 currentFolderId 变化时，自动展开该文件夹
+  useEffect(() => {
+    if (currentFolderId) {
+      setExpandedFolders((prev) => {
+        if (!prev.has(currentFolderId)) {
+          const newSet = new Set(prev);
+          newSet.add(currentFolderId);
+          return newSet;
+        }
+        return prev;
+      });
+    }
+  }, [currentFolderId]);
 
   useEffect(() => {
     if (fileEditingInputRef.current) {
@@ -65,6 +80,18 @@ export function Sidebar() {
     setPendingDelete(null);
   };
 
+  const toggleFolder = (folderId: string) => {
+    setExpandedFolders((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(folderId)) {
+        newSet.delete(folderId);
+      } else {
+        newSet.add(folderId);
+      }
+      return newSet;
+    });
+  };
+
   const isFolderDeletePending = (folderId: string) =>
     pendingDelete?.type === "folder" && pendingDelete.folderId === folderId;
 
@@ -86,144 +113,157 @@ export function Sidebar() {
         </button>
       </div>
       <div className="folder-list">
-        {folders.map((folder) => (
-          <div key={folder.id} className="folder-section">
-            <div className="folder-header">
-              <FolderOpen size={14} className="folder-icon" />
-              {editingFolderId === folder.id ? (
-                <input
-                  ref={(el) => {
-                    if (editingFolderId === folder.id) {
-                      folderEditingInputRef.current = el;
-                    }
-                  }}
-                  className="folder-name-input"
-                  value={folder.name}
-                  onChange={(e) => renameFolder(folder.id, e.target.value)}
-                  onBlur={() => setEditingFolderId(null)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      setEditingFolderId(null);
-                    }
-                  }}
-                />
-              ) : (
-                <span
-                  className="folder-name"
-                  onDoubleClick={() => setEditingFolderId(folder.id)}
-                >
-                  {folder.name}
-                </span>
-              )}
-              <div className="folder-actions">
-                <button
-                  className="folder-action-btn"
-                  onClick={() => createFile(folder.id)}
-                  title="New file"
-                >
-                  <FilePlus size={13} />
-                </button>
-                {isFolderDeletePending(folder.id) ? (
-                  <div className="delete-confirm" ref={deleteConfirmRef}>
-                    <button
-                      className="delete-confirm-ok"
-                      onClick={() => handleDeleteConfirm()}
-                    >
-                      <Trash2 size={11} />
-                      删除
-                    </button>
-                  </div>
+        {folders.map((folder) => {
+          const isExpanded = expandedFolders.has(folder.id);
+          return (
+            <div key={folder.id} className="folder-section">
+              <div className="folder-header" onClick={() => toggleFolder(folder.id)}>
+                {isExpanded ? (
+                  <FolderOpen size={14} className="folder-icon" />
                 ) : (
-                  <button
-                    className="folder-action-btn danger"
-                    title="Delete folder"
-                    onClick={() =>
-                      setPendingDelete({ type: "folder", folderId: folder.id })
-                    }
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  <Folder size={14} className="folder-icon" />
                 )}
-              </div>
-            </div>
-            <ul className="file-list">
-              {folder.files.map((file) => {
-                const isActive =
-                  currentFolderId === folder.id && currentFileId === file.id;
-                const isEditing = editingFileId === file.id;
-                const isFilePending = isFileDeletePending(folder.id, file.id);
-
-                return (
-                  <li
-                    key={file.id}
-                    className={classNames("file-item", { active: isActive })}
-                    onClick={() => selectFile(folder.id, file.id)}
+                {editingFolderId === folder.id ? (
+                  <input
+                    ref={(el) => {
+                      if (editingFolderId === folder.id) {
+                        folderEditingInputRef.current = el;
+                      }
+                    }}
+                    className="folder-name-input"
+                    value={folder.name}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => renameFolder(folder.id, e.target.value)}
+                    onBlur={() => setEditingFolderId(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        setEditingFolderId(null);
+                      }
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="folder-name"
                     onDoubleClick={(e) => {
                       e.stopPropagation();
-                      setEditingFileId(file.id);
+                      setEditingFolderId(folder.id);
                     }}
                   >
-                    <FileText size={13} className="file-icon" />
-                    {isEditing ? (
-                      <input
-                        ref={(el) => {
-                          if (isEditing) {
-                            fileEditingInputRef.current = el;
-                          }
-                        }}
-                        className="file-name-input"
-                        value={file.name}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) =>
-                          renameFile(folder.id, file.id, e.target.value)
-                        }
-                        onBlur={() => setEditingFileId(null)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            setEditingFileId(null);
-                          }
-                        }}
-                      />
-                    ) : (
-                      <span className="file-name-display">{file.name}</span>
-                    )}
-                    {isFilePending ? (
-                      <div className="delete-confirm" ref={deleteConfirmRef}>
-                        <button
-                          className="delete-confirm-ok"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteConfirm();
-                          }}
-                        >
-                          <Trash2 size={11} />
-                          删除
-                        </button>
-                      </div>
-                    ) : (
+                    {folder.name}
+                  </span>
+                )}
+                <div className="folder-actions" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="folder-action-btn"
+                    onClick={() => createFile(folder.id)}
+                    title="New file"
+                  >
+                    <FilePlus size={13} />
+                  </button>
+                  {isFolderDeletePending(folder.id) ? (
+                    <div className="delete-confirm" ref={deleteConfirmRef}>
                       <button
-                        className="delete-file"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPendingDelete({
-                            type: "file",
-                            folderId: folder.id,
-                            fileId: file.id,
-                          });
-                        }}
-                        title="Delete file"
+                        className="delete-confirm-ok"
+                        onClick={() => handleDeleteConfirm()}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={11} />
+                        删除
                       </button>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+                    </div>
+                  ) : (
+                    <button
+                      className="folder-action-btn danger"
+                      title="Delete folder"
+                      onClick={() =>
+                        setPendingDelete({ type: "folder", folderId: folder.id })
+                      }
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {isExpanded && (
+                <ul className="file-list">
+                  {folder.files.map((file) => {
+                    const isActive =
+                      currentFolderId === folder.id && currentFileId === file.id;
+                    const isEditing = editingFileId === file.id;
+                    const isFilePending = isFileDeletePending(folder.id, file.id);
+
+                    return (
+                      <li
+                        key={file.id}
+                        className={classNames("file-item", { active: isActive })}
+                        onClick={() => selectFile(folder.id, file.id)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setEditingFileId(file.id);
+                        }}
+                      >
+                        <FileText size={13} className="file-icon" />
+                        {isEditing ? (
+                          <input
+                            ref={(el) => {
+                              if (isEditing) {
+                                fileEditingInputRef.current = el;
+                              }
+                            }}
+                            className="file-name-input"
+                            value={file.name}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              renameFile(folder.id, file.id, e.target.value)
+                            }
+                            onBlur={() => setEditingFileId(null)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                setEditingFileId(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span className="file-name-display">{file.name}</span>
+                        )}
+                        {isFilePending ? (
+                          <div className="delete-confirm" ref={deleteConfirmRef} onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="delete-confirm-ok"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteConfirm();
+                              }}
+                            >
+                              <Trash2 size={11} />
+                              删除
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            className="delete-file"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPendingDelete({
+                                type: "file",
+                                folderId: folder.id,
+                                fileId: file.id,
+                              });
+                            }}
+                            title="Delete file"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })}
       </div>
     </aside>
   );
