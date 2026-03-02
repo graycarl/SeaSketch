@@ -17,6 +17,9 @@ export function EditorPane() {
 
   return (
     <div className="editor-pane">
+      <div className="editor-header">
+        <h2>Editor</h2>
+      </div>
       <CodeEditor
         key={currentFile.id}
         value={currentFile.content}

@@ -2,7 +2,25 @@
   flex: 1;
   padding: 12px;
   display: flex;
+  flex-direction: column;
   background: #0f1117;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.editor-header h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8892a4;
 }
 
 .editor-pane .code-editor {
