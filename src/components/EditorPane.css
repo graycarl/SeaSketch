@@ -1,0 +1,24 @@
+.editor-pane {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+}
+
+.editor-pane textarea {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.editor-pane.empty {
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 16px;
+}

@@ -3,8 +3,10 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": ["main"],
+  "plugins": ["store"],
   "permissions": [
     "core:default",
-    "opener:default"
+    "opener:default",
+    "store:default"
   ]
 }
