@@ -21,6 +21,8 @@ const getStateSnapshot = (
 interface SeaSketchStore extends AppStateData {
   isLoading: boolean;
   hasLoaded: boolean;
+  // Volatile in-memory overrides for sample file content (not persisted)
+  sampleContents: Record<string, string>;
   selectFile: (folderId: string, fileId: string) => void;
   createFolder: () => void;
   renameFolder: (folderId: string, name: string) => void;
@@ -29,6 +31,7 @@ interface SeaSketchStore extends AppStateData {
   renameFile: (folderId: string, fileId: string, name: string) => void;
   deleteFile: (folderId: string, fileId: string) => void;
   updateFileContent: (folderId: string, fileId: string, content: string) => void;
+  updateSampleContent: (fileId: string, content: string) => void;
   updateLayout: (layout: AppStateData["layout"]) => void;
   loadState: () => Promise<void>;
   saveState: () => Promise<void>;
@@ -74,6 +77,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
   ...createDefaultState(),
   isLoading: true,
   hasLoaded: false,
+  sampleContents: {},
   selectFile: (folderId, fileId) => set({ currentFolderId: folderId, currentFileId: fileId }),
   createFolder: () => {
     const folderId = nanoid();
@@ -175,6 +179,12 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
     debouncedSave(
       getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout),
     );
+  },
+  updateSampleContent: (fileId, content) => {
+    set((state) => ({
+      sampleContents: { ...state.sampleContents, [fileId]: content },
+    }));
+    // Not persisted — intentionally no debouncedSave call
   },
   updateLayout: (layout) => {
     const currentLayout = get().layout ?? {};

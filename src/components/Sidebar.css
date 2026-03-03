@@ -273,3 +273,41 @@
   margin-top: 2px;
   padding-top: 2px;
 }
+
+/* ── Samples folder ──────────────────────────── */
+.samples-folder {
+  border-bottom: 1px solid #2a3147;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+}
+
+.samples-folder + .folder-section {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.samples-icon {
+  color: #a78bfa !important;
+  opacity: 1 !important;
+}
+
+.samples-folder .folder-name {
+  color: #a78bfa;
+}
+
+.samples-folder .file-icon {
+  color: #7c6faa;
+}
+
+.samples-folder .file-item.active .file-icon {
+  color: #a78bfa;
+}
+
+.samples-folder .file-item.active {
+  background: #261f3a;
+}
+
+.samples-folder .file-item:hover {
+  background: #1e1a2e;
+}

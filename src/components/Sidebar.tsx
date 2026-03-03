@@ -1,7 +1,8 @@
 import classNames from "classnames";
 import { useEffect, useRef, useState } from "react";
-import { FilePlus, Folder, FolderOpen, FolderPlus, Trash2, FileText } from "lucide-react";
+import { FilePlus, Folder, FolderOpen, FolderPlus, Trash2, FileText, BookOpen } from "lucide-react";
 import { useSeaSketchStore } from "../store";
+import { samplesFolder, SAMPLES_FOLDER_ID } from "../samples";
 import "./Sidebar.css";
 
 type PendingDelete =
@@ -21,6 +22,8 @@ export function Sidebar() {
     deleteFolder,
     deleteFile,
   } = useSeaSketchStore();
+
+  const allFolders = [samplesFolder, ...folders];
 
   const [editingFileId, setEditingFileId] = useState<string | null>(null);
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
@@ -113,17 +116,20 @@ export function Sidebar() {
         </button>
       </div>
       <div className="folder-list">
-        {folders.map((folder) => {
+        {allFolders.map((folder) => {
+          const isSamples = folder.id === SAMPLES_FOLDER_ID;
           const isExpanded = expandedFolders.has(folder.id);
           return (
-            <div key={folder.id} className="folder-section">
+            <div key={folder.id} className={classNames("folder-section", { "samples-folder": isSamples })}>
               <div className="folder-header" onClick={() => toggleFolder(folder.id)}>
-                {isExpanded ? (
+                {isSamples ? (
+                  <BookOpen size={14} className="folder-icon samples-icon" />
+                ) : isExpanded ? (
                   <FolderOpen size={14} className="folder-icon" />
                 ) : (
                   <Folder size={14} className="folder-icon" />
                 )}
-                {editingFolderId === folder.id ? (
+                {!isSamples && editingFolderId === folder.id ? (
                   <input
                     ref={(el) => {
                       if (editingFolderId === folder.id) {
@@ -145,62 +151,72 @@ export function Sidebar() {
                 ) : (
                   <span
                     className="folder-name"
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      setEditingFolderId(folder.id);
-                    }}
+                    onDoubleClick={
+                      isSamples
+                        ? undefined
+                        : (e) => {
+                            e.stopPropagation();
+                            setEditingFolderId(folder.id);
+                          }
+                    }
                   >
                     {folder.name}
                   </span>
                 )}
-                <div className="folder-actions" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    className="folder-action-btn"
-                    onClick={() => createFile(folder.id)}
-                    title="New file"
-                  >
-                    <FilePlus size={13} />
-                  </button>
-                  {isFolderDeletePending(folder.id) ? (
-                    <div className="delete-confirm" ref={deleteConfirmRef}>
-                      <button
-                        className="delete-confirm-ok"
-                        onClick={() => handleDeleteConfirm()}
-                      >
-                        <Trash2 size={11} />
-                        删除
-                      </button>
-                    </div>
-                  ) : (
+                {!isSamples && (
+                  <div className="folder-actions" onClick={(e) => e.stopPropagation()}>
                     <button
-                      className="folder-action-btn danger"
-                      title="Delete folder"
-                      onClick={() =>
-                        setPendingDelete({ type: "folder", folderId: folder.id })
-                      }
+                      className="folder-action-btn"
+                      onClick={() => createFile(folder.id)}
+                      title="New file"
                     >
-                      <Trash2 size={13} />
+                      <FilePlus size={13} />
                     </button>
-                  )}
-                </div>
+                    {isFolderDeletePending(folder.id) ? (
+                      <div className="delete-confirm" ref={deleteConfirmRef}>
+                        <button
+                          className="delete-confirm-ok"
+                          onClick={() => handleDeleteConfirm()}
+                        >
+                          <Trash2 size={11} />
+                          删除
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="folder-action-btn danger"
+                        title="Delete folder"
+                        onClick={() =>
+                          setPendingDelete({ type: "folder", folderId: folder.id })
+                        }
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               {isExpanded && (
                 <ul className="file-list">
                   {folder.files.map((file) => {
                     const isActive =
                       currentFolderId === folder.id && currentFileId === file.id;
-                    const isEditing = editingFileId === file.id;
-                    const isFilePending = isFileDeletePending(folder.id, file.id);
+                    const isEditing = !isSamples && editingFileId === file.id;
+                    const isFilePending = !isSamples && isFileDeletePending(folder.id, file.id);
 
                     return (
                       <li
                         key={file.id}
                         className={classNames("file-item", { active: isActive })}
                         onClick={() => selectFile(folder.id, file.id)}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          setEditingFileId(file.id);
-                        }}
+                        onDoubleClick={
+                          isSamples
+                            ? undefined
+                            : (e) => {
+                                e.stopPropagation();
+                                setEditingFileId(file.id);
+                              }
+                        }
                       >
                         <FileText size={13} className="file-icon" />
                         {isEditing ? (
@@ -241,20 +257,22 @@ export function Sidebar() {
                             </button>
                           </div>
                         ) : (
-                          <button
-                            className="delete-file"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPendingDelete({
-                                type: "file",
-                                folderId: folder.id,
-                                fileId: file.id,
-                              });
-                            }}
-                            title="Delete file"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          !isSamples && (
+                            <button
+                              className="delete-file"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPendingDelete({
+                                  type: "file",
+                                  folderId: folder.id,
+                                  fileId: file.id,
+                                });
+                              }}
+                              title="Delete file"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )
                         )}
                       </li>
                     );
