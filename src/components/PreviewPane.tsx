@@ -1,4 +1,5 @@
 import { useSeaSketchStore } from "../store";
+import { samplesFolder, SAMPLES_FOLDER_ID } from "../samples";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEffect, useMemo, useRef, useState } from "react";
 import mermaid from "mermaid";
@@ -7,16 +8,28 @@ import "./PreviewPane.css";
 mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
 export function PreviewPane() {
-  const { folders, currentFolderId, currentFileId } = useSeaSketchStore();
+  const { folders, currentFolderId, currentFileId, sampleContents } = useSeaSketchStore();
+
+  const isSamples = currentFolderId === SAMPLES_FOLDER_ID;
+
   const currentFolder = useMemo(
-    () => folders.find((folder) => folder.id === currentFolderId),
-    [folders, currentFolderId],
+    () =>
+      isSamples
+        ? samplesFolder
+        : folders.find((folder) => folder.id === currentFolderId),
+    [isSamples, folders, currentFolderId],
   );
   const currentFile = useMemo(
     () => currentFolder?.files.find((file) => file.id === currentFileId),
     [currentFolder, currentFileId],
   );
-  const debouncedContent = useDebouncedValue(currentFile?.content ?? "", 400);
+
+  // For samples, content may have been edited in-memory
+  const content = isSamples && currentFile
+    ? (sampleContents[currentFile.id] ?? currentFile.content)
+    : (currentFile?.content ?? "");
+
+  const debouncedContent = useDebouncedValue(content, 400);
   const [error, setError] = useState<string | null>(null);
   const lastSuccessfulSvg = useRef<string>("");
   const containerRef = useRef<HTMLDivElement>(null);
