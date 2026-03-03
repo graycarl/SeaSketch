@@ -1,5 +1,5 @@
 .preview-pane {
-  width: var(--preview-width, 35%);
+  flex: 1;
   min-width: 280px;
   border-left: 1px solid #2a3147;
   padding: 12px;

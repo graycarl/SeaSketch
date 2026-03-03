@@ -12,7 +12,7 @@ export interface FolderNode {
 
 export interface LayoutState {
   sidebarWidth?: number;
-  previewWidth?: number;
+  editorWidth?: number;
 }
 
 export interface AppStateData {

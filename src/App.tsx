@@ -10,6 +10,7 @@ const MIN_SIDEBAR_WIDTH = 200;
 const MIN_EDITOR_WIDTH = 320;
 const MIN_PREVIEW_WIDTH = 280;
 const DEFAULT_SIDEBAR_WIDTH = 240;
+const DEFAULT_EDITOR_WIDTH = 520;
 
 function App() {
   const { loadState, isLoading, layout, updateLayout } = useSeaSketchStore();
@@ -18,12 +19,12 @@ function App() {
     type: "sidebar" | "preview" | null;
     startX: number;
     startSidebarWidth: number;
-    startPreviewWidth: number;
+    startEditorWidth: number;
   }>({
     type: null,
     startX: 0,
     startSidebarWidth: DEFAULT_SIDEBAR_WIDTH,
-    startPreviewWidth: 0,
+    startEditorWidth: DEFAULT_EDITOR_WIDTH,
   });
 
   useEffect(() => {
@@ -35,7 +36,7 @@ function App() {
       if (!dragStateRef.current.type || !shellRef.current) {
         return;
       }
-      const { type, startX, startSidebarWidth, startPreviewWidth } = dragStateRef.current;
+      const { type, startX, startSidebarWidth, startEditorWidth } = dragStateRef.current;
       const containerWidth = shellRef.current.getBoundingClientRect().width;
       const deltaX = event.clientX - startX;
 
@@ -43,20 +44,20 @@ function App() {
         const rawWidth = startSidebarWidth + deltaX;
         const maxWidth = Math.max(
           MIN_SIDEBAR_WIDTH,
-          containerWidth - startPreviewWidth - MIN_EDITOR_WIDTH,
+          containerWidth - startEditorWidth - MIN_PREVIEW_WIDTH,
         );
         const nextSidebarWidth = Math.min(Math.max(rawWidth, MIN_SIDEBAR_WIDTH), maxWidth);
         updateLayout({ sidebarWidth: nextSidebarWidth });
       }
 
       if (type === "preview") {
-        const rawWidth = startPreviewWidth - deltaX;
+        const rawWidth = startEditorWidth + deltaX;
         const maxWidth = Math.max(
-          MIN_PREVIEW_WIDTH,
-          containerWidth - startSidebarWidth - MIN_EDITOR_WIDTH,
+          MIN_EDITOR_WIDTH,
+          containerWidth - startSidebarWidth - MIN_PREVIEW_WIDTH,
         );
-        const nextPreviewWidth = Math.min(Math.max(rawWidth, MIN_PREVIEW_WIDTH), maxWidth);
-        updateLayout({ previewWidth: nextPreviewWidth });
+        const nextEditorWidth = Math.min(Math.max(rawWidth, MIN_EDITOR_WIDTH), maxWidth);
+        updateLayout({ editorWidth: nextEditorWidth });
       }
     };
 
@@ -78,15 +79,14 @@ function App() {
   const handleStartResize = (type: "sidebar" | "preview", event: ReactMouseEvent) => {
     if (!shellRef.current) return;
     event.preventDefault();
-    const containerWidth = shellRef.current.getBoundingClientRect().width;
     const sidebarWidth = layout?.sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH;
-    const previewWidth = layout?.previewWidth ?? containerWidth * 0.35;
+    const editorWidth = layout?.editorWidth ?? DEFAULT_EDITOR_WIDTH;
 
     dragStateRef.current = {
       type,
       startX: event.clientX,
       startSidebarWidth: sidebarWidth,
-      startPreviewWidth: previewWidth,
+      startEditorWidth: editorWidth,
     };
     document.body.classList.add("is-resizing");
   };
@@ -101,11 +101,11 @@ function App() {
   }
 
   const sidebarWidth = layout?.sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH;
-  const previewWidth = layout?.previewWidth;
-  const shellStyle: CSSProperties = {
+  const editorWidth = layout?.editorWidth ?? DEFAULT_EDITOR_WIDTH;
+  const shellStyle = {
     "--sidebar-width": `${sidebarWidth}px`,
-    "--preview-width": previewWidth ? `${previewWidth}px` : "35%",
-  };
+    "--editor-width": `${editorWidth}px`,
+  } as CSSProperties;
 
   return (
     <div className="app-shell" ref={shellRef} style={shellStyle}>

@@ -70,9 +70,10 @@ export function CodeEditor({ value, onChange }: CodeEditorProps) {
             height: "100%",
           },
           ".cm-scroller": {
-            fontFamily: "\"JetBrains Mono\", \"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace",
-            fontSize: "13px",
-            lineHeight: "1.6",
+            fontFamily:
+              "\"JetBrains Mono\", \"SF Mono\", \"Fira Code\", Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+            fontSize: "12px",
+            lineHeight: "1.5",
           },
         }),
       ],

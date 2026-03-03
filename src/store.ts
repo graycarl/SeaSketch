@@ -3,6 +3,9 @@ import { nanoid } from "nanoid";
 import { AppStateData, FolderNode, FileNode } from "./types";
 import { invoke } from "@tauri-apps/api/core";
 
+const DEFAULT_SIDEBAR_WIDTH = 240;
+const DEFAULT_EDITOR_WIDTH = 520;
+
 const getStateSnapshot = (
   folders: FolderNode[],
   currentFolderId: string | null,
@@ -60,7 +63,10 @@ const createDefaultState = (): AppStateData => {
     ],
     currentFolderId: folderId,
     currentFileId: fileId,
-    layout: {},
+    layout: {
+      sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+      editorWidth: DEFAULT_EDITOR_WIDTH,
+    },
   };
 };
 
@@ -171,14 +177,23 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
     );
   },
   updateLayout: (layout) => {
-    const nextLayout = { ...(get().layout ?? {}), ...layout };
-    set({ layout: nextLayout });
+    const currentLayout = get().layout ?? {};
+    const nextLayout = { ...currentLayout, ...layout };
+    const sidebarWidth = nextLayout.sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH;
+    const editorWidth = nextLayout.editorWidth ?? DEFAULT_EDITOR_WIDTH;
+
+    const normalizedLayout = {
+      sidebarWidth,
+      editorWidth,
+    };
+
+    set({ layout: normalizedLayout });
     debouncedSave(
       getStateSnapshot(
         get().folders,
         get().currentFolderId,
         get().currentFileId,
-        nextLayout,
+        normalizedLayout,
       ),
     );
   },

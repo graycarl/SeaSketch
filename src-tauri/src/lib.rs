@@ -24,7 +24,7 @@ pub struct FolderNode {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LayoutState {
     pub sidebar_width: Option<f64>,
-    pub preview_width: Option<f64>,
+    pub editor_width: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
