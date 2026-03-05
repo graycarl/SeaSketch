@@ -3,6 +3,7 @@ import { samplesFolder, SAMPLES_FOLDER_ID } from "../samples";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEffect, useMemo, useRef, useState } from "react";
 import mermaid from "mermaid";
+import { parseFrontmatter } from "../utils/frontmatter";
 import "./PreviewPane.css";
 
 mermaid.initialize({ startOnLoad: false, theme: "dark" });
@@ -44,7 +45,18 @@ export function PreviewPane() {
 
     const renderDiagram = async () => {
       try {
-        const { svg } = await mermaid.render(`diagram-${currentFile.id}`, debouncedContent);
+        // Extract frontmatter config and build the render content
+        const { config, body } = parseFrontmatter(debouncedContent);
+        const hasConfig = config.theme || config.look;
+        const initConfig: Record<string, string> = {};
+        if (config.theme) initConfig.theme = config.theme;
+        if (config.look) initConfig.look = config.look;
+        const initDirective = hasConfig
+          ? `%%{init: ${JSON.stringify(initConfig)}}%%\n`
+          : "";
+        const renderContent = initDirective + body;
+
+        const { svg } = await mermaid.render(`diagram-${currentFile.id}`, renderContent);
         lastSuccessfulSvg.current = svg;
         if (containerRef.current) containerRef.current.innerHTML = svg;
         setError(null);

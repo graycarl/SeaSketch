@@ -1,0 +1,120 @@
+.dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dropdown-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4a5568;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 9px;
+  background: #1a1f2e;
+  border: 1px solid #2a3147;
+  border-radius: 5px;
+  color: #8892a4;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+  outline: none;
+}
+
+.dropdown-trigger:hover {
+  border-color: #3d4a63;
+  color: #c4cdd9;
+  background: #1e2438;
+}
+
+.dropdown-trigger.is-open {
+  border-color: #4f7ef8;
+  color: #c4cdd9;
+  background: #1e2438;
+}
+
+.dropdown-trigger-text {
+  line-height: 1;
+}
+
+.dropdown-chevron {
+  color: #4a5568;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.dropdown-trigger:hover .dropdown-chevron,
+.dropdown-trigger.is-open .dropdown-chevron {
+  color: #8892a4;
+}
+
+.dropdown-trigger.is-open .dropdown-chevron {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  min-width: 120px;
+  background: #1a1f2e;
+  border: 1px solid #2a3147;
+  border-radius: 7px;
+  padding: 4px;
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 9px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #8892a4;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s ease, color 0.1s ease;
+  white-space: nowrap;
+  outline: none;
+}
+
+.dropdown-item:hover {
+  background: #232b3e;
+  color: #c4cdd9;
+}
+
+.dropdown-item.is-selected {
+  color: #4f7ef8;
+  background: rgba(79, 126, 248, 0.08);
+}
+
+.dropdown-item.is-selected:hover {
+  background: rgba(79, 126, 248, 0.14);
+}
+
+.dropdown-item-check {
+  flex-shrink: 0;
+  color: #4f7ef8;
+}
