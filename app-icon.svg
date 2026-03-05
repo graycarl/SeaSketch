@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Deep ocean background gradient -->
+    <radialGradient id="bg" cx="50%" cy="42%" r="62%" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#1e2c52"/>
+      <stop offset="100%" stop-color="#080d18"/>
+    </radialGradient>
+
+    <!-- Top node: bright blue sphere -->
+    <radialGradient id="nodeTop" cx="35%" cy="28%" r="70%">
+      <stop offset="0%"   stop-color="#a8c8ff"/>
+      <stop offset="45%"  stop-color="#4f7ef8"/>
+      <stop offset="100%" stop-color="#1a3d9e"/>
+    </radialGradient>
+
+    <!-- Bottom nodes: indigo-purple sphere -->
+    <radialGradient id="nodeBot" cx="35%" cy="28%" r="70%">
+      <stop offset="0%"   stop-color="#c4b5fd"/>
+      <stop offset="45%"  stop-color="#7c6ef8"/>
+      <stop offset="100%" stop-color="#3e23a8"/>
+    </radialGradient>
+
+    <!-- Glow for nodes -->
+    <filter id="glow" x="-80%" y="-80%" width="360%" height="360%">
+      <feGaussianBlur stdDeviation="16" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Soft glow for connecting lines -->
+    <filter id="lineGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Wave fill gradient -->
+    <linearGradient id="wave1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#4f7ef8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#4f7ef8" stop-opacity="0.02"/>
+    </linearGradient>
+    <linearGradient id="wave2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#6b5ef8" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#6b5ef8" stop-opacity="0.0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ── Background ──────────────────────────── -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Subtle center glow to give depth -->
+  <circle cx="256" cy="220" r="200" fill="#4f7ef8" fill-opacity="0.05"/>
+
+  <!-- ── Ocean Waves ─────────────────────────── -->
+  <path d="M -8,410
+           C  56,383  106,440  180,413
+           C 254,386  300,443  374,416
+           C 448,389  494,446  520,419
+           L 520,512 L -8,512 Z"
+        fill="url(#wave1)"/>
+  <path d="M -8,445
+           C  56,422  106,468  180,445
+           C 254,422  300,468  374,445
+           C 448,422  494,468  520,445
+           L 520,512 L -8,512 Z"
+        fill="url(#wave2)"/>
+
+  <!-- Tiny ambient particles (depth) -->
+  <circle cx="98"  cy="195" r="2.5" fill="#6b9fff" fill-opacity="0.28"/>
+  <circle cx="418" cy="175" r="2"   fill="#6b9fff" fill-opacity="0.22"/>
+  <circle cx="76"  cy="365" r="1.8" fill="#a78bfa" fill-opacity="0.30"/>
+  <circle cx="436" cy="370" r="2.5" fill="#a78bfa" fill-opacity="0.22"/>
+  <circle cx="380" cy="130" r="1.5" fill="#6b9fff" fill-opacity="0.18"/>
+  <circle cx="140" cy="398" r="1.5" fill="#6b9fff" fill-opacity="0.18"/>
+  <circle cx="460" cy="280" r="2"   fill="#a78bfa" fill-opacity="0.16"/>
+  <circle cx="58"  cy="290" r="2"   fill="#4f7ef8" fill-opacity="0.16"/>
+
+  <!-- ── Connection Lines ────────────────────── -->
+
+  <!-- Top node → bottom-left node (cubic bezier) -->
+  <path d="M 232,224 C 212,278 182,298 168,320"
+        stroke="#4f7ef8" stroke-width="11" stroke-linecap="round"
+        stroke-opacity="0.72" fill="none"
+        filter="url(#lineGlow)"/>
+
+  <!-- Top node → bottom-right node (cubic bezier) -->
+  <path d="M 280,224 C 300,278 330,298 344,320"
+        stroke="#7c6ef8" stroke-width="11" stroke-linecap="round"
+        stroke-opacity="0.72" fill="none"
+        filter="url(#lineGlow)"/>
+
+  <!-- ── Arrow tips ──────────────────────────── -->
+  <!-- Left arrow -->
+  <path d="M 160,323 L 172,306 L 182,318 Z"
+        fill="#5d8ffb" fill-opacity="0.80"/>
+  <!-- Right arrow -->
+  <path d="M 352,323 L 340,310 L 354,303 Z"
+        fill="#8b7bf9" fill-opacity="0.80"/>
+
+  <!-- ── Nodes ────────────────────────────────── -->
+
+  <!-- Top node — outer glow -->
+  <circle cx="256" cy="172" r="62" fill="#4f7ef8" fill-opacity="0.16" filter="url(#glow)"/>
+  <!-- Top node — main sphere -->
+  <circle cx="256" cy="172" r="52" fill="url(#nodeTop)"/>
+  <!-- Top node — rim highlight -->
+  <circle cx="256" cy="172" r="52" fill="none" stroke="white" stroke-width="2" stroke-opacity="0.22"/>
+  <!-- Top node — specular highlight -->
+  <ellipse cx="237" cy="152" rx="18" ry="11"
+           fill="white" fill-opacity="0.18"
+           transform="rotate(-25,237,152)"/>
+
+  <!-- Bottom-left node — outer glow -->
+  <circle cx="168" cy="352" r="50" fill="#7c6ef8" fill-opacity="0.18" filter="url(#glow)"/>
+  <!-- Bottom-left node — main sphere -->
+  <circle cx="168" cy="352" r="40" fill="url(#nodeBot)"/>
+  <circle cx="168" cy="352" r="40" fill="none" stroke="white" stroke-width="1.5" stroke-opacity="0.18"/>
+  <ellipse cx="153" cy="336" rx="13" ry="8"
+           fill="white" fill-opacity="0.15"
+           transform="rotate(-25,153,336)"/>
+
+  <!-- Bottom-right node — outer glow -->
+  <circle cx="344" cy="352" r="50" fill="#4f7ef8" fill-opacity="0.18" filter="url(#glow)"/>
+  <!-- Bottom-right node — main sphere -->
+  <circle cx="344" cy="352" r="40" fill="url(#nodeTop)"/>
+  <circle cx="344" cy="352" r="40" fill="none" stroke="white" stroke-width="1.5" stroke-opacity="0.18"/>
+  <ellipse cx="329" cy="336" rx="13" ry="8"
+           fill="white" fill-opacity="0.15"
+           transform="rotate(-25,329,336)"/>
+</svg>
