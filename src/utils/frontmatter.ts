@@ -54,8 +54,8 @@ export function parseFrontmatter(content: string): ParsedContent {
 function parseYamlConfig(yaml: string): DiagramConfig {
   const config: DiagramConfig = {};
 
-  // Look for `config:` section and its indented children
-  const inConfigSection = /^config:\s*$([\s\S]*?)(?=^\S|\s*$)/m.exec(yaml);
+  // Match `config:` and capture all following indented lines
+  const inConfigSection = /^config:[ \t]*\n((?:[ \t]+.*\n?)*)/m.exec(yaml);
   const section = inConfigSection ? inConfigSection[1] : yaml;
 
   const themeMatch = section.match(/^\s+theme:\s*(\S+)/m);
