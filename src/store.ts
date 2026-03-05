@@ -11,11 +11,13 @@ const getStateSnapshot = (
   currentFolderId: string | null,
   currentFileId: string | null,
   layout?: AppStateData["layout"],
+  previewBackground?: AppStateData["previewBackground"],
 ): AppStateData => ({
   folders,
   currentFolderId,
   currentFileId,
   layout,
+  previewBackground,
 });
 
 interface SeaSketchStore extends AppStateData {
@@ -33,6 +35,7 @@ interface SeaSketchStore extends AppStateData {
   updateFileContent: (folderId: string, fileId: string, content: string) => void;
   updateSampleContent: (fileId: string, content: string) => void;
   updateLayout: (layout: AppStateData["layout"]) => void;
+  togglePreviewBackground: () => void;
   loadState: () => Promise<void>;
   saveState: () => Promise<void>;
 }
@@ -94,7 +97,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
     };
     const folders = [...get().folders, newFolder];
     set({ folders, currentFolderId: folderId, currentFileId: fileId });
-    debouncedSave(getStateSnapshot(folders, folderId, fileId, get().layout));
+    debouncedSave(getStateSnapshot(folders, folderId, fileId, get().layout, get().previewBackground));
   },
   renameFolder: (folderId, name) => {
     const folders = get().folders.map((folder) =>
@@ -102,7 +105,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
     );
     set({ folders });
     debouncedSave(
-      getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout),
+      getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout, get().previewBackground),
     );
   },
   deleteFolder: (folderId) => {
@@ -118,7 +121,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
       }
     }
     set({ folders, currentFolderId, currentFileId });
-    debouncedSave(getStateSnapshot(folders, currentFolderId, currentFileId, get().layout));
+    debouncedSave(getStateSnapshot(folders, currentFolderId, currentFileId, get().layout, get().previewBackground));
   },
   createFile: (folderId) => {
     const fileId = nanoid();
@@ -131,7 +134,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
       folder.id === folderId ? { ...folder, files: [...folder.files, newFile] } : folder,
     );
     set({ folders, currentFolderId: folderId, currentFileId: fileId });
-    debouncedSave(getStateSnapshot(folders, folderId, fileId, get().layout));
+    debouncedSave(getStateSnapshot(folders, folderId, fileId, get().layout, get().previewBackground));
   },
   renameFile: (folderId, fileId, name) => {
     const folders = get().folders.map((folder) =>
@@ -144,7 +147,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
     );
     set({ folders });
     debouncedSave(
-      getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout),
+      getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout, get().previewBackground),
     );
   },
   deleteFile: (folderId, fileId) => {
@@ -164,7 +167,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
       }
     }
     set({ folders, currentFolderId, currentFileId });
-    debouncedSave(getStateSnapshot(folders, currentFolderId, currentFileId, get().layout));
+    debouncedSave(getStateSnapshot(folders, currentFolderId, currentFileId, get().layout, get().previewBackground));
   },
   updateFileContent: (folderId, fileId, content) => {
     const folders = get().folders.map((folder) =>
@@ -177,7 +180,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
     );
     set({ folders });
     debouncedSave(
-      getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout),
+      getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout, get().previewBackground),
     );
   },
   updateSampleContent: (fileId, content) => {
@@ -204,6 +207,20 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
         get().currentFolderId,
         get().currentFileId,
         normalizedLayout,
+        get().previewBackground,
+      ),
+    );
+  },
+  togglePreviewBackground: () => {
+    const next = get().previewBackground === "light" ? "dark" : "light";
+    set({ previewBackground: next });
+    debouncedSave(
+      getStateSnapshot(
+        get().folders,
+        get().currentFolderId,
+        get().currentFileId,
+        get().layout,
+        next,
       ),
     );
   },
@@ -225,6 +242,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
       get().currentFolderId,
       get().currentFileId,
       get().layout,
+      get().previewBackground,
     );
     await invoke("save_state", { state });
   },

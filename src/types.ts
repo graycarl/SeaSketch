@@ -20,4 +20,5 @@ export interface AppStateData {
   currentFolderId: string | null;
   currentFileId: string | null;
   layout?: LayoutState;
+  previewBackground?: "dark" | "light";
 }

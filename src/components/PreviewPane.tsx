@@ -4,12 +4,13 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEffect, useMemo, useRef, useState } from "react";
 import mermaid from "mermaid";
 import { parseFrontmatter } from "../utils/frontmatter";
+import { Sun, Moon } from "lucide-react";
 import "./PreviewPane.css";
 
 mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
 export function PreviewPane() {
-  const { folders, currentFolderId, currentFileId, sampleContents } = useSeaSketchStore();
+  const { folders, currentFolderId, currentFileId, sampleContents, previewBackground, togglePreviewBackground } = useSeaSketchStore();
 
   const isSamples = currentFolderId === SAMPLES_FOLDER_ID;
 
@@ -75,6 +76,8 @@ export function PreviewPane() {
     }
   }, [currentFile, debouncedContent]);
 
+  const bg = previewBackground ?? "dark";
+
   if (!currentFile) {
     return (
       <div className="preview-pane empty">
@@ -89,7 +92,15 @@ export function PreviewPane() {
         <h2>Preview</h2>
         {error && <span className="error-text">{error}</span>}
       </div>
-      <div className="preview-content" ref={containerRef} />
+      <div className={`preview-content bg-${bg}`} ref={containerRef}>
+        <button
+          className="preview-bg-toggle"
+          onClick={togglePreviewBackground}
+          title={bg === "dark" ? "Switch to light background" : "Switch to dark background"}
+        >
+          {bg === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+        </button>
+      </div>
     </div>
   );
 }
