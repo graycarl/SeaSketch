@@ -34,13 +34,13 @@ export function PreviewPane() {
   const debouncedContent = useDebouncedValue(content, 400);
   const [error, setError] = useState<string | null>(null);
   const lastSuccessfulSvg = useRef<string>("");
-  const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!currentFile) {
       setError(null);
       lastSuccessfulSvg.current = "";
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      if (svgRef.current) svgRef.current.innerHTML = "";
       return;
     }
 
@@ -59,19 +59,19 @@ export function PreviewPane() {
 
         const { svg } = await mermaid.render(`diagram-${currentFile.id}`, renderContent);
         lastSuccessfulSvg.current = svg;
-        if (containerRef.current) containerRef.current.innerHTML = svg;
+        if (svgRef.current) svgRef.current.innerHTML = svg;
         setError(null);
       } catch (err) {
         console.error("Mermaid render error", err);
         setError((err as Error).message);
-        if (containerRef.current) containerRef.current.innerHTML = lastSuccessfulSvg.current;
+        if (svgRef.current) svgRef.current.innerHTML = lastSuccessfulSvg.current;
       }
     };
 
     if (debouncedContent.trim()) {
       renderDiagram();
     } else {
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      if (svgRef.current) svgRef.current.innerHTML = "";
       setError("Diagram is empty");
     }
   }, [currentFile, debouncedContent]);
@@ -92,7 +92,8 @@ export function PreviewPane() {
         <h2>Preview</h2>
         {error && <span className="error-text">{error}</span>}
       </div>
-      <div className={`preview-content bg-${bg}`} ref={containerRef}>
+      <div className={`preview-content bg-${bg}`}>
+        <div className="preview-svg" ref={svgRef} />
         <button
           className="preview-bg-toggle"
           onClick={togglePreviewBackground}

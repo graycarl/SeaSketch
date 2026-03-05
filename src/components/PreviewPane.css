@@ -64,6 +64,11 @@
   background: #f8f7f4;
 }
 
+.preview-svg {
+  width: 100%;
+  height: 100%;
+}
+
 /* Toggle button */
 .preview-bg-toggle {
   position: absolute;
