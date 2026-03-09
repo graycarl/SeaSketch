@@ -238,6 +238,12 @@ export function ChatPane() {
               placeholder="描述你想要的修改..."
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                  event.preventDefault();
+                  handleSend();
+                }
+              }}
               rows={2}
             />
             <button className="chat-send" onClick={handleSend} disabled={isLoading || !draft.trim()}>
