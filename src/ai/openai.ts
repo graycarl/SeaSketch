@@ -23,7 +23,7 @@ export async function requestMermaidUpdate(payload: OpenAIRequestPayload): Promi
   const host = settings.apiHost.replace(/\/$/, "");
   const url = `${host}/v1/chat/completions`;
 
-  const systemPrompt = `You are a Mermaid diagram assistant.\n\nRequirements:\n- Read the provided Mermaid source, rendered SVG, and render errors.\n- Update the Mermaid source to satisfy the user request.\n- If no changes are needed, set \"noChange\": true and return the original Mermaid source verbatim (including the first line).\n- Return ONLY valid JSON with keys: assistantMessage, mermaid, optional noChange.\n- assistantMessage should explain changes succinctly.\n- mermaid must be the full updated Mermaid source.\n\nJSON format example:\n{"assistantMessage":"...","mermaid":"graph TD\\n  A-->B","noChange":false}`;
+  const systemPrompt = `You are a Mermaid diagram assistant.\n\nRequirements:\n- Default to replying in Chinese.\n- Read the provided Mermaid source, rendered SVG, and render errors.\n- Update the Mermaid source to satisfy the user request.\n- If no changes are needed, set \"noChange\": true and return the original Mermaid source verbatim (including the first line).\n- Return ONLY valid JSON with keys: assistantMessage, mermaid, optional noChange.\n- assistantMessage should explain changes succinctly.\n- mermaid must be the full updated Mermaid source.\n\nJSON format example:\n{"assistantMessage":"...","mermaid":"graph TD\\n  A-->B","noChange":false}`;
 
   const contextParts = [
     `Current Mermaid source:\n${mermaidSource}`,
