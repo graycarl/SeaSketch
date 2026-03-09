@@ -5,12 +5,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import mermaid from "mermaid";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { Sun, Moon } from "lucide-react";
+import { ChatPane } from "./ChatPane";
 import "./PreviewPane.css";
 
 mermaid.initialize({ startOnLoad: false, theme: "dark" });
 
 export function PreviewPane() {
-  const { folders, currentFolderId, currentFileId, sampleContents, previewBackground, togglePreviewBackground } = useSeaSketchStore();
+  const { folders, currentFolderId, currentFileId, sampleContents, previewBackground, togglePreviewBackground, setPreviewSnapshot } = useSeaSketchStore();
 
   const isSamples = currentFolderId === SAMPLES_FOLDER_ID;
 
@@ -40,6 +41,7 @@ export function PreviewPane() {
     if (!currentFile) {
       setError(null);
       lastSuccessfulSvg.current = "";
+      setPreviewSnapshot({ svg: "", error: null });
       if (svgRef.current) svgRef.current.innerHTML = "";
       return;
     }
@@ -61,9 +63,12 @@ export function PreviewPane() {
         lastSuccessfulSvg.current = svg;
         if (svgRef.current) svgRef.current.innerHTML = svg;
         setError(null);
+        setPreviewSnapshot({ svg, error: null });
       } catch (err) {
         console.error("Mermaid render error", err);
-        setError((err as Error).message);
+        const errorMessage = (err as Error).message;
+        setError(errorMessage);
+        setPreviewSnapshot({ svg: lastSuccessfulSvg.current, error: errorMessage });
         if (svgRef.current) svgRef.current.innerHTML = lastSuccessfulSvg.current;
       }
     };
@@ -73,8 +78,9 @@ export function PreviewPane() {
     } else {
       if (svgRef.current) svgRef.current.innerHTML = "";
       setError("Diagram is empty");
+      setPreviewSnapshot({ svg: "", error: "Diagram is empty" });
     }
-  }, [currentFile, debouncedContent]);
+  }, [currentFile, debouncedContent, setPreviewSnapshot]);
 
   const bg = previewBackground ?? "dark";
 
@@ -102,6 +108,7 @@ export function PreviewPane() {
           {bg === "dark" ? <Sun size={14} /> : <Moon size={14} />}
         </button>
       </div>
+      <ChatPane />
     </div>
   );
 }

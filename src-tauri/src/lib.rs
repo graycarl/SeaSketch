@@ -1,11 +1,19 @@
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Runtime, Manager, Emitter};
 use tauri_plugin_store::{Store, StoreExt};
 use uuid::Uuid;
 
 const STORE_PATH: &str = "seasketch-state.json";
 const STORE_KEY: &str = "state";
+const SETTINGS_KEY: &str = "settings";
+const SETTINGS_PATH: &str = "seasketch-settings.json";
+const CHAT_FILENAME: &str = "chat.md";
+const ATTACHMENTS_DIR: &str = "attachments";
+const MAX_ATTACHMENT_BYTES: usize = 5 * 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileNode {
@@ -36,6 +44,43 @@ pub struct AppState {
     pub layout: Option<LayoutState>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatMessage {
+    pub id: String,
+    pub role: String,
+    pub content: String,
+    pub timestamp: String,
+    pub attachments: Option<Vec<String>>,
+    pub applied_mermaid: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AttachmentMeta {
+    pub id: String,
+    pub name: String,
+    pub filename: String,
+    pub size: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AISettings {
+    pub api_key: String,
+    pub api_host: String,
+    pub model: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMeta {
+    pub id: String,
+    pub role: String,
+    pub timestamp: String,
+    pub attachments: Option<Vec<String>>,
+    pub applied_mermaid: Option<bool>,
+}
+
 impl Default for AppState {
     fn default() -> Self {
         let folder_id = Uuid::new_v4().to_string();
@@ -61,6 +106,93 @@ fn get_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>, String> {
     app.store(STORE_PATH).map_err(|e| e.to_string())
 }
 
+fn get_settings_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>, String> {
+    app.store(SETTINGS_PATH).map_err(|e| e.to_string())
+}
+
+fn get_data_root<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
+    app.path().app_data_dir().map_err(|e| e.to_string()).map(|dir| dir.join("seasketch"))
+}
+
+fn file_workspace<R: Runtime>(app: &AppHandle<R>, folder_id: &str, file_id: &str) -> Result<PathBuf, String> {
+    let base = get_data_root(app)?;
+    Ok(base.join("diagrams").join(folder_id).join(file_id))
+}
+
+fn chat_path<R: Runtime>(app: &AppHandle<R>, folder_id: &str, file_id: &str) -> Result<PathBuf, String> {
+    Ok(file_workspace(app, folder_id, file_id)?.join(CHAT_FILENAME))
+}
+
+fn attachments_dir<R: Runtime>(app: &AppHandle<R>, folder_id: &str, file_id: &str) -> Result<PathBuf, String> {
+    Ok(file_workspace(app, folder_id, file_id)?.join(ATTACHMENTS_DIR))
+}
+
+fn ensure_parent(path: &Path) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn ensure_dir(path: &Path) -> Result<(), String> {
+    fs::create_dir_all(path).map_err(|e| e.to_string())
+}
+
+fn parse_chat(contents: &str) -> Vec<ChatMessage> {
+    let mut messages = Vec::new();
+    let mut current_meta: Option<ChatMeta> = None;
+    let mut current_content: Vec<String> = Vec::new();
+
+    for line in contents.lines() {
+        if let Some(meta_json) = line.strip_prefix("<!-- message: ").and_then(|s| s.strip_suffix(" -->")) {
+            if let Some(meta) = current_meta.take() {
+                let content = current_content.join("\n").trim_end().to_string();
+                messages.push(ChatMessage {
+                    id: meta.id,
+                    role: meta.role,
+                    content,
+                    timestamp: meta.timestamp,
+                    attachments: meta.attachments,
+                    applied_mermaid: meta.applied_mermaid,
+                });
+                current_content.clear();
+            }
+            let parsed: Result<ChatMeta, _> = serde_json::from_str(meta_json);
+            if let Ok(meta) = parsed {
+                current_meta = Some(meta);
+            }
+        } else {
+            current_content.push(line.to_string());
+        }
+    }
+
+    if let Some(meta) = current_meta {
+        let content = current_content.join("\n").trim_end().to_string();
+        messages.push(ChatMessage {
+            id: meta.id,
+            role: meta.role,
+            content,
+            timestamp: meta.timestamp,
+            attachments: meta.attachments,
+            applied_mermaid: meta.applied_mermaid,
+        });
+    }
+
+    messages
+}
+
+fn format_message(message: &ChatMessage) -> Result<String, String> {
+    let meta = ChatMeta {
+        id: message.id.clone(),
+        role: message.role.clone(),
+        timestamp: message.timestamp.clone(),
+        attachments: message.attachments.clone(),
+        applied_mermaid: message.applied_mermaid,
+    };
+    let meta_json = serde_json::to_string(&meta).map_err(|e| e.to_string())?;
+    Ok(format!("<!-- message: {} -->\n{}\n\n", meta_json, message.content.trim_end()))
+}
+
 #[tauri::command]
 async fn load_state<R: Runtime>(app: AppHandle<R>) -> Result<AppState, String> {
     let store = get_store(&app)?;
@@ -79,12 +211,130 @@ async fn save_state<R: Runtime>(app: AppHandle<R>, state: AppState) -> Result<()
     store.save().map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn load_settings<R: Runtime>(app: AppHandle<R>) -> Result<AISettings, String> {
+    let store = get_settings_store(&app)?;
+    let value = store.get(SETTINGS_KEY.to_string());
+    match value {
+        Some(data) => serde_json::from_value(data).map_err(|e| e.to_string()),
+        None => Ok(AISettings {
+            api_key: String::new(),
+            api_host: "https://api.openai.com".to_string(),
+            model: "gpt-4o-mini".to_string(),
+        }),
+    }
+}
+
+#[tauri::command]
+async fn save_settings<R: Runtime>(app: AppHandle<R>, settings: AISettings) -> Result<(), String> {
+    let store = get_settings_store(&app)?;
+    let serialized = serde_json::to_value(settings).map_err(|e| e.to_string())?;
+    store.set(SETTINGS_KEY.to_string(), serialized);
+    store.save().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn read_chat<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String) -> Result<Vec<ChatMessage>, String> {
+    let path = chat_path(&app, &folder_id, &file_id)?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let contents = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    Ok(parse_chat(&contents))
+}
+
+#[tauri::command]
+async fn append_chat<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String, message: ChatMessage) -> Result<(), String> {
+    let path = chat_path(&app, &folder_id, &file_id)?;
+    ensure_parent(&path)?;
+    let entry = format_message(&message)?;
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| e.to_string())?;
+    file.write_all(entry.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn list_attachments<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String) -> Result<Vec<AttachmentMeta>, String> {
+    let dir = attachments_dir(&app, &folder_id, &file_id)?;
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut results = Vec::new();
+    for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if path.is_file() {
+            let metadata = entry.metadata().map_err(|e| e.to_string())?;
+            let filename = path.file_name().and_then(|v| v.to_str()).unwrap_or_default().to_string();
+            results.push(AttachmentMeta {
+                id: filename.clone(),
+                name: filename.clone(),
+                filename,
+                size: metadata.len() as usize,
+            });
+        }
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+async fn save_attachment<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String, filename: String, content: String) -> Result<AttachmentMeta, String> {
+    if content.len() > MAX_ATTACHMENT_BYTES {
+        return Err("Attachment exceeds size limit".to_string());
+    }
+    let dir = attachments_dir(&app, &folder_id, &file_id)?;
+    ensure_dir(&dir)?;
+    let sanitized_name = filename.replace('/', "_");
+    let path = dir.join(&sanitized_name);
+    fs::write(&path, content.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(AttachmentMeta {
+        id: sanitized_name.clone(),
+        name: sanitized_name.clone(),
+        filename: sanitized_name,
+        size: content.len(),
+    })
+}
+
+#[tauri::command]
+async fn read_attachment<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String, filename: String) -> Result<String, String> {
+    let dir = attachments_dir(&app, &folder_id, &file_id)?;
+    let path = dir.join(filename);
+    fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![load_state, save_state])
+        .menu(|app| {
+            use tauri::menu::{Menu, MenuItem, Submenu};
+            let settings_item = MenuItem::with_id(app, "open-settings", "Settings", true, None::<&str>)?;
+            let menu = Menu::default(app)?;
+            let ai_menu = Submenu::with_items(app, "AI", true, &[&settings_item])?;
+            menu.append(&ai_menu)?;
+            Ok(menu)
+        })
+        .on_menu_event(|app, event| {
+            if event.id() == "open-settings" {
+                let _ = app.emit("open-settings", ());
+            }
+        })
+        .invoke_handler(tauri::generate_handler![
+            load_state,
+            save_state,
+            load_settings,
+            save_settings,
+            read_chat,
+            append_chat,
+            list_attachments,
+            save_attachment,
+            read_attachment
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

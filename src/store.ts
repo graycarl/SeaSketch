@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
-import { AppStateData, FolderNode, FileNode } from "./types";
+import { AppStateData, FolderNode, FileNode, ChatMessage, AttachmentMeta, AISettings } from "./types";
 import { invoke } from "@tauri-apps/api/core";
+import { SAMPLES_FOLDER_ID } from "./samples";
 
 const DEFAULT_SIDEBAR_WIDTH = 217;
 const DEFAULT_EDITOR_WIDTH = 416;
@@ -25,7 +26,14 @@ interface SeaSketchStore extends AppStateData {
   hasLoaded: boolean;
   // Volatile in-memory overrides for sample file content (not persisted)
   sampleContents: Record<string, string>;
+  previewSnapshot: { svg: string; error: string | null };
+  chatByFileId: Record<string, ChatMessage[]>;
+  attachmentsByFileId: Record<string, AttachmentMeta[]>;
+  isChatLoadingByFileId: Record<string, boolean>;
+  settings: AISettings;
+  isSettingsOpen: boolean;
   selectFile: (folderId: string, fileId: string) => void;
+  setChatLoading: (fileId: string, isLoading: boolean) => void;
   createFolder: () => void;
   renameFolder: (folderId: string, name: string) => void;
   deleteFolder: (folderId: string) => void;
@@ -36,6 +44,15 @@ interface SeaSketchStore extends AppStateData {
   updateSampleContent: (fileId: string, content: string) => void;
   updateLayout: (layout: AppStateData["layout"]) => void;
   togglePreviewBackground: () => void;
+  setPreviewSnapshot: (snapshot: { svg: string; error: string | null }) => void;
+  loadChatForFile: (folderId: string, fileId: string) => Promise<void>;
+  appendChatMessage: (folderId: string, fileId: string, message: ChatMessage) => Promise<void>;
+  loadAttachmentsForFile: (folderId: string, fileId: string) => Promise<void>;
+  saveAttachment: (folderId: string, fileId: string, filename: string, content: string) => Promise<AttachmentMeta>;
+  loadSettings: () => Promise<void>;
+  saveSettings: (settings: AISettings) => Promise<void>;
+  openSettings: () => void;
+  closeSettings: () => void;
   loadState: () => Promise<void>;
   saveState: () => Promise<void>;
 }
@@ -81,7 +98,28 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
   isLoading: true,
   hasLoaded: false,
   sampleContents: {},
-  selectFile: (folderId, fileId) => set({ currentFolderId: folderId, currentFileId: fileId }),
+  previewSnapshot: { svg: "", error: null },
+  chatByFileId: {},
+  attachmentsByFileId: {},
+  isChatLoadingByFileId: {},
+  settings: {
+    apiKey: "",
+    apiHost: "https://api.openai.com",
+    model: "gpt-4o-mini",
+  },
+  isSettingsOpen: false,
+  selectFile: (folderId, fileId) => {
+    set({ currentFolderId: folderId, currentFileId: fileId });
+    if (folderId && fileId && folderId !== SAMPLES_FOLDER_ID) {
+      get().loadChatForFile(folderId, fileId);
+      get().loadAttachmentsForFile(folderId, fileId);
+    }
+  },
+  setChatLoading: (fileId, isLoading) => {
+    set((state) => ({
+      isChatLoadingByFileId: { ...state.isChatLoadingByFileId, [fileId]: isLoading },
+    }));
+  },
   createFolder: () => {
     const folderId = nanoid();
     const fileId = nanoid();
@@ -224,6 +262,52 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
       ),
     );
   },
+  setPreviewSnapshot: (snapshot) => set({ previewSnapshot: snapshot }),
+  loadChatForFile: async (folderId, fileId) => {
+    if (!folderId || !fileId) return;
+    const messages = await invoke<ChatMessage[]>("read_chat", { folderId, fileId }).catch(() => []);
+    set((state) => ({
+      chatByFileId: { ...state.chatByFileId, [fileId]: messages },
+    }));
+  },
+  appendChatMessage: async (folderId, fileId, message) => {
+    await invoke("append_chat", { folderId, fileId, message });
+    set((state) => ({
+      chatByFileId: {
+        ...state.chatByFileId,
+        [fileId]: [...(state.chatByFileId[fileId] ?? []), message],
+      },
+    }));
+  },
+  loadAttachmentsForFile: async (folderId, fileId) => {
+    if (!folderId || !fileId) return;
+    const attachments = await invoke<AttachmentMeta[]>("list_attachments", { folderId, fileId }).catch(() => []);
+    set((state) => ({
+      attachmentsByFileId: { ...state.attachmentsByFileId, [fileId]: attachments },
+    }));
+  },
+  saveAttachment: async (folderId, fileId, filename, content) => {
+    const attachment = await invoke<AttachmentMeta>("save_attachment", { folderId, fileId, filename, content });
+    set((state) => ({
+      attachmentsByFileId: {
+        ...state.attachmentsByFileId,
+        [fileId]: [...(state.attachmentsByFileId[fileId] ?? []), attachment],
+      },
+    }));
+    return attachment;
+  },
+  loadSettings: async () => {
+    const settings = await invoke<AISettings>("load_settings").catch(() => null);
+    if (settings) {
+      set({ settings });
+    }
+  },
+  saveSettings: async (settings) => {
+    await invoke("save_settings", { settings });
+    set({ settings });
+  },
+  openSettings: () => set({ isSettingsOpen: true }),
+  closeSettings: () => set({ isSettingsOpen: false }),
   loadState: async () => {
     set({ isLoading: true });
     const response = await invoke<AppStateData>("load_state").catch(() => null);
@@ -235,6 +319,13 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
     if (!response || !response.folders || response.folders.length === 0) {
       debouncedSave(state);
     }
+    const currentFolderId = state.currentFolderId;
+    const currentFileId = state.currentFileId;
+    if (currentFolderId && currentFileId && currentFolderId !== SAMPLES_FOLDER_ID) {
+      get().loadChatForFile(currentFolderId, currentFileId);
+      get().loadAttachmentsForFile(currentFolderId, currentFileId);
+    }
+    await get().loadSettings();
   },
   saveState: async () => {
     const state = getStateSnapshot(

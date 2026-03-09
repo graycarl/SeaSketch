@@ -3,7 +3,9 @@ import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { EditorPane } from "./components/EditorPane";
 import { PreviewPane } from "./components/PreviewPane";
+import { SettingsModal } from "./components/SettingsModal";
 import { useSeaSketchStore } from "./store";
+import { listen } from "@tauri-apps/api/event";
 import "./App.css";
 
 const MIN_SIDEBAR_WIDTH = 200;
@@ -13,7 +15,7 @@ const DEFAULT_SIDEBAR_WIDTH = 217;
 const DEFAULT_EDITOR_WIDTH = 416;
 
 function App() {
-  const { loadState, isLoading, layout, updateLayout } = useSeaSketchStore();
+  const { loadState, isLoading, layout, updateLayout, openSettings } = useSeaSketchStore();
   const shellRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{
     type: "sidebar" | "preview" | null;
@@ -30,6 +32,20 @@ function App() {
   useEffect(() => {
     loadState();
   }, [loadState]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen("open-settings", () => {
+      openSettings();
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, [openSettings]);
 
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
@@ -124,6 +140,7 @@ function App() {
         onMouseDown={(event) => handleStartResize("preview", event)}
       />
       <PreviewPane />
+      <SettingsModal />
     </div>
   );
 }
