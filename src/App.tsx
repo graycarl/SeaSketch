@@ -9,8 +9,8 @@ import "./App.css";
 const MIN_SIDEBAR_WIDTH = 200;
 const MIN_EDITOR_WIDTH = 320;
 const MIN_PREVIEW_WIDTH = 280;
-const DEFAULT_SIDEBAR_WIDTH = 240;
-const DEFAULT_EDITOR_WIDTH = 520;
+const DEFAULT_SIDEBAR_WIDTH = 217;
+const DEFAULT_EDITOR_WIDTH = 416;
 
 function App() {
   const { loadState, isLoading, layout, updateLayout } = useSeaSketchStore();

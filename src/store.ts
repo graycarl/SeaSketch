@@ -3,8 +3,8 @@ import { nanoid } from "nanoid";
 import { AppStateData, FolderNode, FileNode } from "./types";
 import { invoke } from "@tauri-apps/api/core";
 
-const DEFAULT_SIDEBAR_WIDTH = 240;
-const DEFAULT_EDITOR_WIDTH = 520;
+const DEFAULT_SIDEBAR_WIDTH = 217;
+const DEFAULT_EDITOR_WIDTH = 416;
 
 const getStateSnapshot = (
   folders: FolderNode[],
