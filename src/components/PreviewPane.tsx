@@ -8,7 +8,7 @@ import { Sun, Moon } from "lucide-react";
 import { ChatPane } from "./ChatPane";
 import "./PreviewPane.css";
 
-mermaid.initialize({ startOnLoad: false, theme: "dark" });
+mermaid.initialize({ startOnLoad: false, theme: "dark", suppressErrorRendering: true });
 
 export function PreviewPane() {
   const { folders, currentFolderId, currentFileId, sampleContents, previewBackground, togglePreviewBackground, setPreviewSnapshot } = useSeaSketchStore();
