@@ -6,11 +6,16 @@
   display: flex;
   flex-direction: column;
   min-height: 220px;
+  max-height: 50%;
   overflow: hidden;
 }
 
 .chat-pane.disabled {
   opacity: 0.6;
+}
+
+.chat-pane.collapsed {
+  min-height: auto;
 }
 
 .chat-pane.empty {
@@ -42,6 +47,25 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.collapse-button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8892a4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.collapse-button:hover {
+  background: rgba(79, 126, 248, 0.12);
+  color: #4f7ef8;
+  border-color: rgba(79, 126, 248, 0.25);
 }
 
 .attach-button {

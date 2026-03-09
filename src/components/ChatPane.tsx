@@ -6,7 +6,7 @@ import { requestMermaidUpdate } from "../ai/openai";
 import { nanoid } from "nanoid";
 import { invoke } from "@tauri-apps/api/core";
 import ReactMarkdown from "react-markdown";
-import { Paperclip, Send } from "lucide-react";
+import { Paperclip, Send, ChevronDown, ChevronUp } from "lucide-react";
 import "./ChatPane.css";
 
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024;
@@ -31,6 +31,7 @@ export function ChatPane() {
   } = useSeaSketchStore();
 
   const [draft, setDraft] = useState("");
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const isSamples = currentFolderId === SAMPLES_FOLDER_ID;
@@ -196,44 +197,55 @@ export function ChatPane() {
   }
 
   return (
-    <div className="chat-pane">
+    <div className={`chat-pane${isCollapsed ? " collapsed" : ""}`}>
       <div className="chat-header">
         <h3>AI Assistant</h3>
         <div className="chat-header-actions">
+          <button
+            className="collapse-button"
+            onClick={() => setIsCollapsed((prev) => !prev)}
+            title={isCollapsed ? "展开" : "收起"}
+          >
+            {isCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
           <label className="attach-button">
             <Paperclip size={14} />
             <input type="file" accept=".txt,.md,.json" onChange={handleAttach} />
           </label>
         </div>
       </div>
-      <div className="chat-messages">
-        {messages.length === 0 && (
-          <div className="chat-empty">描述你的需求，AI 会帮你改 Mermaid。</div>
-        )}
-        {messages.map((message) => (
-          <div key={message.id} className={`chat-message ${message.role}`}>
-            <div className="chat-meta">
-              <span className="chat-role">{message.role}</span>
-              <span className="chat-time">{new Date(message.timestamp).toLocaleTimeString()}</span>
-            </div>
-            <div className="chat-content">
-              <ReactMarkdown>{message.content}</ReactMarkdown>
-            </div>
+      {!isCollapsed && (
+        <>
+          <div className="chat-messages">
+            {messages.length === 0 && (
+              <div className="chat-empty">描述你的需求，AI 会帮你改 Mermaid。</div>
+            )}
+            {messages.map((message) => (
+              <div key={message.id} className={`chat-message ${message.role}`}>
+                <div className="chat-meta">
+                  <span className="chat-role">{message.role}</span>
+                  <span className="chat-time">{new Date(message.timestamp).toLocaleTimeString()}</span>
+                </div>
+                <div className="chat-content">
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="chat-input">
-        <textarea
-          ref={inputRef}
-          placeholder="描述你想要的修改..."
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          rows={2}
-        />
-        <button className="chat-send" onClick={handleSend} disabled={isLoading || !draft.trim()}>
-          {isLoading ? "..." : <Send size={14} />}
-        </button>
-      </div>
+          <div className="chat-input">
+            <textarea
+              ref={inputRef}
+              placeholder="描述你想要的修改..."
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              rows={2}
+            />
+            <button className="chat-send" onClick={handleSend} disabled={isLoading || !draft.trim()}>
+              {isLoading ? "..." : <Send size={14} />}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
