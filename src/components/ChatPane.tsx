@@ -103,22 +103,34 @@ export function ChatPane() {
         userPrompt: userMessage.content,
       });
 
+      const normalizedCurrent = editorValue.replace(/\r\n/g, "\n").trimEnd();
+      const normalizedNext = (result.mermaid ?? "").replace(/\r\n/g, "\n").trimEnd();
+      const assistantText = result.assistantMessage.toLowerCase();
+      const messageIndicatesNoChange =
+        assistantText.includes("no change") ||
+        assistantText.includes("no changes") ||
+        assistantText.includes("no update") ||
+        assistantText.includes("无需修改") ||
+        assistantText.includes("未做修改") ||
+        assistantText.includes("没有修改");
+      const noChange = result.noChange || messageIndicatesNoChange || normalizedNext === normalizedCurrent;
+      const shouldApply = !noChange && normalizedNext.length > 0;
+
       const assistantMessage: ChatMessage = {
         id: nanoid(),
         role: "assistant",
         content: result.assistantMessage,
         timestamp: new Date().toISOString(),
-        appliedMermaid: true,
+        appliedMermaid: shouldApply,
       };
 
       await appendChatMessage(currentFolderId, currentFileId, assistantMessage);
 
-      const nextMermaid = result.mermaid?.trimEnd();
-      if (nextMermaid && nextMermaid !== editorValue.trimEnd()) {
+      if (shouldApply) {
         if (isSamples) {
-          updateSampleContent(currentFileId, nextMermaid);
+          updateSampleContent(currentFileId, normalizedNext);
         } else {
-          updateFileContent(currentFolderId, currentFileId, nextMermaid);
+          updateFileContent(currentFolderId, currentFileId, normalizedNext);
         }
       }
     } catch (error) {
