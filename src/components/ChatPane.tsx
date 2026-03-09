@@ -33,6 +33,7 @@ export function ChatPane() {
   const [draft, setDraft] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const isSamples = currentFolderId === SAMPLES_FOLDER_ID;
   const currentFolder = useMemo(
@@ -56,6 +57,11 @@ export function ChatPane() {
   useEffect(() => {
     setDraft("");
   }, [currentFileId]);
+
+  useEffect(() => {
+    if (isCollapsed) return;
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length, isCollapsed]);
 
   const handleSend = async () => {
     if (!currentFile || !currentFolderId || !currentFileId) return;
@@ -231,6 +237,7 @@ export function ChatPane() {
                 </div>
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
           <div className="chat-input">
             <textarea
