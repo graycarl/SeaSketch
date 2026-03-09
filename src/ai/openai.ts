@@ -50,6 +50,7 @@ export async function requestMermaidUpdate(payload: OpenAIRequestPayload): Promi
 
   const body = {
     model: settings.model,
+    response_format: { type: "json_object" },
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: contextParts.join("\n\n") },
@@ -83,7 +84,13 @@ export async function requestMermaidUpdate(payload: OpenAIRequestPayload): Promi
 
   let parsed: OpenAIResponse | null = null;
   try {
-    parsed = JSON.parse(content);
+    const cleaned = content
+      .trim()
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```$/i, "")
+      .trim();
+    parsed = JSON.parse(cleaned);
   } catch (error) {
     throw new Error("Failed to parse OpenAI response JSON");
   }
