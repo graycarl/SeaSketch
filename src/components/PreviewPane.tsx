@@ -4,14 +4,15 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEffect, useMemo, useRef, useState, useCallback, type WheelEvent, type MouseEvent as ReactMouseEvent } from "react";
 import mermaid from "mermaid";
 import { parseFrontmatter } from "../utils/frontmatter";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Copy } from "lucide-react";
 import { ChatPane } from "./ChatPane";
+import { invoke } from "@tauri-apps/api/core";
 import "./PreviewPane.css";
 
 mermaid.initialize({ startOnLoad: false, theme: "dark", suppressErrorRendering: true });
 
 export function PreviewPane() {
-  const { folders, currentFolderId, currentFileId, sampleContents, previewBackground, togglePreviewBackground, setPreviewSnapshot } = useSeaSketchStore();
+  const { folders, currentFolderId, currentFileId, sampleContents, previewBackground, togglePreviewBackground, setPreviewSnapshot, showToast, toast } = useSeaSketchStore();
 
   const isSamples = currentFolderId === SAMPLES_FOLDER_ID;
 
@@ -236,6 +237,25 @@ export function PreviewPane() {
 
   const bg = previewBackground ?? "dark";
 
+  const handleCopySvg = useCallback(async () => {
+    const svg = lastSuccessfulSvg.current;
+    if (!svg) {
+      showToast("没有可复制的 SVG", "error");
+      return;
+    }
+    try {
+      // Add XML declaration to make it a valid SVG file
+      const svgWithDeclaration = `<?xml version="1.0" encoding="UTF-8"?>\n${svg}`;
+      // Generate filename from current file name
+      const filename = `${currentFile?.name.replace(/\.md$/, "") || "diagram"}.svg`;
+      await invoke("copy_svg_to_clipboard", { svgContent: svgWithDeclaration, filename });
+      showToast("SVG 已复制到剪贴板");
+    } catch (err) {
+      console.error("Copy failed", err);
+      showToast("复制失败", "error");
+    }
+  }, [showToast, currentFile]);
+
   if (!currentFile) {
     return (
       <div className="preview-pane empty">
@@ -248,6 +268,9 @@ export function PreviewPane() {
     <div className="preview-pane">
       <div className="preview-header">
         <h2>Preview</h2>
+        <button className="preview-copy-button" onClick={handleCopySvg} title="Copy SVG">
+          <Copy size={14} />
+        </button>
         {error && <span className="error-text">{error}</span>}
       </div>
       <div
@@ -275,6 +298,7 @@ export function PreviewPane() {
         </button>
       </div>
       <ChatPane />
+      {toast.visible && <div className={`toast ${toast.type}`}>{toast.message}</div>}
     </div>
   );
 }

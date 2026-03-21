@@ -21,6 +21,12 @@ const getStateSnapshot = (
   previewBackground,
 });
 
+interface ToastState {
+  message: string;
+  type: "success" | "error" | "info";
+  visible: boolean;
+}
+
 interface SeaSketchStore extends AppStateData {
   isLoading: boolean;
   hasLoaded: boolean;
@@ -32,6 +38,9 @@ interface SeaSketchStore extends AppStateData {
   isChatLoadingByFileId: Record<string, boolean>;
   settings: AISettings;
   isSettingsOpen: boolean;
+  toast: ToastState;
+  showToast: (message: string, type?: ToastState["type"]) => void;
+  hideToast: () => void;
   selectFile: (folderId: string, fileId: string) => void;
   setChatLoading: (fileId: string, isLoading: boolean) => void;
   createFolder: () => void;
@@ -115,6 +124,16 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
     geminiModel: "gemini-3-flash-preview",
   },
   isSettingsOpen: false,
+  toast: { message: "", type: "success", visible: false },
+  showToast: (message, type = "success") => {
+    set({ toast: { message, type, visible: true } });
+    setTimeout(() => {
+      set((state) => ({ toast: { ...state.toast, visible: false } }));
+    }, 2000);
+  },
+  hideToast: () => {
+    set((state) => ({ toast: { ...state.toast, visible: false } }));
+  },
   selectFile: (folderId, fileId) => {
     set({ currentFolderId: folderId, currentFileId: fileId });
     if (folderId && fileId && folderId !== SAMPLES_FOLDER_ID) {

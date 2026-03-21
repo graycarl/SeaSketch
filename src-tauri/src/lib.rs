@@ -7,6 +7,9 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreExt};
 use uuid::Uuid;
 
+#[cfg(target_os = "macos")]
+use std::process::Command;
+
 mod oauth;
 
 const STORE_PATH: &str = "seasketch-state.json";
@@ -458,6 +461,41 @@ async fn refresh_gemini_token(
     Ok(creds)
 }
 
+#[tauri::command]
+async fn copy_svg_to_clipboard(svg_content: String, filename: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        // Create a temporary file in the system temp directory
+        let temp_dir = std::env::temp_dir();
+        let svg_path = temp_dir.join(&filename);
+        
+        // Write the SVG content to the file
+        fs::write(&svg_path, svg_content.as_bytes()).map_err(|e| e.to_string())?;
+        
+        // Use AppleScript to copy the file to clipboard (so it can be pasted as file)
+        let path_str = svg_path.to_string_lossy().to_string();
+        let script = format!(
+            r#"set theFile to POSIX file "{}"
+set theClipboard to {}
+set the clipboard to theClipboard"#,
+            path_str.replace("\"", "\\\""),
+            "theFile"
+        );
+        
+        Command::new("osascript")
+            .args(["-e", &script])
+            .output()
+            .map_err(|e| e.to_string())?;
+        
+        Ok(())
+    }
+    
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Copy as file is only supported on macOS".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -492,7 +530,8 @@ pub fn run() {
             save_attachment,
             read_attachment,
             start_gemini_oauth,
-            refresh_gemini_token
+            refresh_gemini_token,
+            copy_svg_to_clipboard
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
