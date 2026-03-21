@@ -28,3 +28,8 @@
 - Ensure `@tauri-apps/plugin-store` is configured and available from both Rust and JS sides
 - Centralize state persistence through a `saveState` helper to avoid duplicated calls
 - Provide UX cues (e.g., loading indicators, error toasts) when state is loading or render fails
+
+## Build Verification
+在修改完代码后，按顺序执行以下命令确认编译通过：
+1. 前端构建：`npm run build`
+2. Rust 后端检查：`cd src-tauri && cargo check`

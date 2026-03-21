@@ -11,6 +11,7 @@ export function SettingsModal() {
   const [aiProvider, setAiProvider] = useState<AIProvider>(settings.aiProvider);
   const [openaiApiKey, setOpenaiApiKey] = useState(settings.openaiApiKey);
   const [openaiApiHost, setOpenaiApiHost] = useState(settings.openaiApiHost);
+  const [openaiModel, setOpenaiModel] = useState(settings.openaiModel || "gpt-4o");
   const [geminiApiKey, setGeminiApiKey] = useState(settings.geminiApiKey);
   const [geminiModel, setGeminiModel] = useState(settings.geminiModel || "gemini-3-flash-preview");
   const [showConfirm, setShowConfirm] = useState(false);
@@ -23,6 +24,7 @@ export function SettingsModal() {
       setAiProvider(settings.aiProvider);
       setOpenaiApiKey(settings.openaiApiKey);
       setOpenaiApiHost(settings.openaiApiHost);
+      setOpenaiModel(settings.openaiModel || "gpt-4o");
       setGeminiApiKey(settings.geminiApiKey);
       setGeminiModel(settings.geminiModel || "gemini-3-flash-preview");
     }
@@ -116,10 +118,15 @@ export function SettingsModal() {
   };
 
   const handleSave = async () => {
+    const normalizedOpenaiModel = openaiModel.trim() || "gpt-4o";
+    if (normalizedOpenaiModel !== openaiModel) {
+      setOpenaiModel(normalizedOpenaiModel);
+    }
     await saveSettings({ 
       aiProvider, 
       openaiApiKey, 
-      openaiApiHost, 
+      openaiApiHost,
+      openaiModel: normalizedOpenaiModel,
       geminiApiKey,
       geminiModel,
       geminiOAuth: settings.geminiOAuth, // Preserve OAuth
@@ -169,6 +176,22 @@ export function SettingsModal() {
                 placeholder="https://api.openai.com"
               />
               <div className="hint">用于代理或自定义端点</div>
+            </div>
+            <div className="setting-group">
+              <label htmlFor="openai-model">OpenAI Model Name</label>
+              <input
+                id="openai-model"
+                type="text"
+                value={openaiModel}
+                onChange={(event) => setOpenaiModel(event.target.value)}
+                onBlur={() => {
+                  if (!openaiModel.trim()) {
+                    setOpenaiModel("gpt-4o");
+                  }
+                }}
+                placeholder="gpt-4o"
+              />
+              <div className="hint">用于选择 OpenAI 模型版本</div>
             </div>
           </>
         )}

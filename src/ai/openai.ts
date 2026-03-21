@@ -49,7 +49,7 @@ export async function requestMermaidUpdate(payload: OpenAIRequestPayload): Promi
   contextParts.push(`User request:\n${userPrompt}`);
 
   const body = {
-    model: "gpt-4o-mini",
+    model: settings.openaiModel?.trim() || "gpt-4o",
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: systemPrompt },

@@ -72,6 +72,7 @@ pub struct AISettings {
     pub ai_provider: String,
     pub openai_api_key: String,
     pub openai_api_host: String,
+    pub openai_model: Option<String>,
     pub gemini_api_key: String,
     #[serde(default, rename = "geminiOAuth")]
     pub gemini_oauth: Option<oauth::OAuthCredentials>,
@@ -256,12 +257,16 @@ async fn load_settings<R: Runtime>(app: AppHandle<R>) -> Result<AISettings, Stri
                     } else {
                         settings.openai_api_host
                     },
+                    openai_model: Some("gpt-4o".to_string()),
                     gemini_api_key: String::new(),
                     gemini_oauth: None,
                     gemini_model: Some("gemini-3-flash-preview".to_string()),
                 })
             } else {
                 let mut settings = settings;
+                if settings.openai_model.is_none() {
+                    settings.openai_model = Some("gpt-4o".to_string());
+                }
                 if settings.gemini_model.is_none() {
                     settings.gemini_model = Some("gemini-3-flash-preview".to_string());
                 }
@@ -272,6 +277,7 @@ async fn load_settings<R: Runtime>(app: AppHandle<R>) -> Result<AISettings, Stri
             ai_provider: "openai".to_string(),
             openai_api_key: String::new(),
             openai_api_host: "https://api.openai.com".to_string(),
+            openai_model: Some("gpt-4o".to_string()),
             gemini_api_key: String::new(),
             gemini_oauth: None,
             gemini_model: Some("gemini-3-flash-preview".to_string()),

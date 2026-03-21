@@ -107,6 +107,7 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
     aiProvider: "openai",
     openaiApiKey: "",
     openaiApiHost: "https://api.openai.com",
+    openaiModel: "gpt-4o",
     geminiApiKey: "",
     geminiOAuth: undefined,
     geminiModel: "gemini-3-flash-preview",

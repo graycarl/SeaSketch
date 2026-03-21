@@ -55,6 +55,7 @@ export interface AISettings {
   aiProvider: AIProvider;
   openaiApiKey: string;
   openaiApiHost: string;
+  openaiModel?: string;
   geminiApiKey: string; // Deprecated: kept for backward compatibility
   geminiOAuth?: GeminiOAuthCredentials; // New: OAuth credentials
   geminiModel?: string;
