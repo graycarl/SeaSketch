@@ -36,11 +36,17 @@
 
 .preview-content {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid #2a3147;
   border-radius: 8px;
   padding: 16px;
   position: relative;
+  cursor: grab;
+  overscroll-behavior: contain;
+}
+
+.preview-content.dragging {
+  cursor: grabbing;
 }
 
 .preview-content::-webkit-scrollbar {
@@ -64,9 +70,52 @@
   background: #f8f7f4;
 }
 
+.preview-transform {
+  transform-origin: 0 0;
+  width: max-content;
+  height: max-content;
+}
+
 .preview-svg {
-  width: 100%;
-  height: 100%;
+  display: inline-block;
+}
+
+.preview-zoom-indicator {
+  position: absolute;
+  bottom: 10px;
+  right: 46px;
+  font-size: 11px;
+  color: #8892a4;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.preview-fit-button {
+  border: 1px solid transparent;
+  background: rgba(79, 126, 248, 0.12);
+  color: #8aa2ff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.preview-fit-button:hover {
+  background: rgba(79, 126, 248, 0.2);
+}
+
+.preview-content.bg-light .preview-zoom-indicator {
+  color: #6b7280;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.preview-content.bg-light .preview-fit-button {
+  color: #4f7ef8;
+  background: rgba(79, 126, 248, 0.12);
 }
 
 /* Toggle button */
