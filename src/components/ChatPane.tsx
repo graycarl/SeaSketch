@@ -232,6 +232,23 @@ export function ChatPane() {
       <div className="chat-header">
         <h3>AI Assistant</h3>
         <div className="chat-header-actions">
+          <label className="attach-button">
+            <Paperclip size={14} />
+            <input type="file" accept=".txt,.md,.json" onChange={handleAttach} />
+          </label>
+          {!isCollapsed && attachments.length > 0 && (
+            <div className="chat-attachments">
+              {attachments.map((attachment) => (
+                <span
+                  key={attachment.id}
+                  className="chat-attachment-item"
+                  title={attachment.filename}
+                >
+                  {attachment.filename}
+                </span>
+              ))}
+            </div>
+          )}
           <button
             className="collapse-button"
             onClick={() => setIsCollapsed((prev) => !prev)}
@@ -239,10 +256,6 @@ export function ChatPane() {
           >
             {isCollapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-          <label className="attach-button">
-            <Paperclip size={14} />
-            <input type="file" accept=".txt,.md,.json" onChange={handleAttach} />
-          </label>
         </div>
       </div>
       {!isCollapsed && (

@@ -49,6 +49,25 @@
   gap: 8px;
 }
 
+.chat-attachments {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+
+.chat-attachment-item {
+  font-size: 11px;
+  color: #cbd5f5;
+  background: rgba(79, 126, 248, 0.12);
+  border: 1px solid rgba(79, 126, 248, 0.35);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
 .collapse-button {
   border: 1px solid transparent;
   background: transparent;
