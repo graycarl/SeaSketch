@@ -19,7 +19,7 @@ export interface OpenAIRequestPayload {
 }
 
 export async function requestMermaidUpdate(payload: OpenAIRequestPayload): Promise<OpenAIResponse> {
-  const { settings, mermaidSource, previewSvg, previewError, attachmentContents, userPrompt } = payload;
+  const { settings, mermaidSource, previewError, attachmentContents, userPrompt } = payload;
   const host = settings.openaiApiHost.replace(/\/$/, "");
   const url = `${host}/v1/chat/completions`;
 
@@ -27,7 +27,6 @@ export async function requestMermaidUpdate(payload: OpenAIRequestPayload): Promi
 
   const contextParts = [
     `Current Mermaid source:\n${mermaidSource}`,
-    `Preview SVG (may be empty):\n${previewSvg || "<empty>"}`,
     `Preview error (if any):\n${previewError ?? "none"}`,
   ];
 

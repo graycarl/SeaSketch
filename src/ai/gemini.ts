@@ -84,7 +84,7 @@ async function ensureValidToken(oauth: GeminiOAuthCredentials, onTokenRefreshed?
  * Request Mermaid diagram update from Gemini API
  */
 export async function requestMermaidUpdate(payload: GeminiRequestPayload): Promise<GeminiResponsePayload> {
-  const { settings, mermaidSource, previewSvg, previewError, attachmentContents, userPrompt, onTokenRefreshed } = payload;
+  const { settings, mermaidSource, previewError, attachmentContents, userPrompt, onTokenRefreshed } = payload;
 
   // Check authentication method
   const useOAuth = !!settings.geminiOAuth;
@@ -98,7 +98,6 @@ export async function requestMermaidUpdate(payload: GeminiRequestPayload): Promi
 
   const contextParts = [
     `Current Mermaid source:\n${mermaidSource}`,
-    `Preview SVG (may be empty):\n${previewSvg || "<empty>"}`,
     `Preview error (if any):\n${previewError ?? "none"}`,
   ];
 
