@@ -328,7 +328,7 @@ async fn append_chat<R: Runtime>(
 }
 
 #[tauri::command]
-async fn clear_chat<R: Runtime>(
+async fn clear_chat_only<R: Runtime>(
     app: AppHandle<R>,
     folder_id: String,
     file_id: String,
@@ -337,10 +337,30 @@ async fn clear_chat<R: Runtime>(
     if chat_file.exists() {
         fs::remove_file(chat_file).map_err(|e| e.to_string())?;
     }
+    Ok(())
+}
+
+#[tauri::command]
+async fn delete_attachments<R: Runtime>(
+    app: AppHandle<R>,
+    folder_id: String,
+    file_id: String,
+) -> Result<(), String> {
     let attachments = attachments_dir(&app, &folder_id, &file_id)?;
     if attachments.exists() {
         fs::remove_dir_all(attachments).map_err(|e| e.to_string())?;
     }
+    Ok(())
+}
+
+#[tauri::command]
+async fn clear_chat<R: Runtime>(
+    app: AppHandle<R>,
+    folder_id: String,
+    file_id: String,
+) -> Result<(), String> {
+    clear_chat_only(app.clone(), folder_id.clone(), file_id.clone()).await?;
+    delete_attachments(app, folder_id, file_id).await?;
     Ok(())
 }
 
@@ -466,6 +486,8 @@ pub fn run() {
             read_chat,
             append_chat,
             clear_chat,
+            clear_chat_only,
+            delete_attachments,
             list_attachments,
             save_attachment,
             read_attachment,

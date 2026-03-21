@@ -7,7 +7,7 @@ import { requestMermaidUpdate as requestGemini } from "../ai/gemini";
 import { nanoid } from "nanoid";
 import { invoke } from "@tauri-apps/api/core";
 import ReactMarkdown from "react-markdown";
-import { Paperclip, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { Paperclip, Send, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import "./ChatPane.css";
 
 const MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024;
@@ -27,6 +27,8 @@ export function ChatPane() {
     updateSampleContent,
     appendChatMessage,
     saveAttachment,
+    clearChatForFile,
+    deleteAttachmentsForFile,
     settings,
     saveSettings,
     setChatLoading,
@@ -34,6 +36,7 @@ export function ChatPane() {
 
   const [draft, setDraft] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -208,6 +211,21 @@ export function ChatPane() {
     await saveAttachment(currentFolderId, currentFileId, file.name, text);
   };
 
+  const closeClearConfirm = () => setShowClearConfirm(false);
+
+  const handleClearChatOnly = async () => {
+    if (!currentFolderId || !currentFileId) return;
+    await clearChatForFile(currentFolderId, currentFileId);
+    setShowClearConfirm(false);
+  };
+
+  const handleClearChatAndAttachments = async () => {
+    if (!currentFolderId || !currentFileId) return;
+    await clearChatForFile(currentFolderId, currentFileId);
+    await deleteAttachmentsForFile(currentFolderId, currentFileId);
+    setShowClearConfirm(false);
+  };
+
   if (!currentFile) {
     return (
       <div className="chat-pane empty">
@@ -232,6 +250,13 @@ export function ChatPane() {
       <div className="chat-header">
         <h3>AI Assistant</h3>
         <div className="chat-header-actions">
+          <button
+            className="clear-chat-button"
+            onClick={() => setShowClearConfirm(true)}
+            title="清空聊天"
+          >
+            <Trash2 size={14} />
+          </button>
           <label className="attach-button">
             <Paperclip size={14} />
             <input type="file" accept=".txt,.md,.json" onChange={handleAttach} />
@@ -258,6 +283,29 @@ export function ChatPane() {
           </button>
         </div>
       </div>
+      {showClearConfirm && (
+        <div className="confirm-overlay" onClick={closeClearConfirm}>
+          <div className="confirm-dialog" onClick={(event) => event.stopPropagation()}>
+            <h4>清空聊天</h4>
+            <p>清空当前文件的聊天记录，并可选择是否删除附件。</p>
+            <div className="confirm-actions">
+              <button className="btn secondary" onClick={handleClearChatOnly}>
+                仅清空聊天
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleClearChatAndAttachments}
+                disabled={attachments.length === 0}
+              >
+                同时删除附件
+              </button>
+              <button className="btn secondary" onClick={closeClearConfirm}>
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {!isCollapsed && (
         <>
           <div className="chat-messages">

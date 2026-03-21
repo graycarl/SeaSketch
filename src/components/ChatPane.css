@@ -68,7 +68,8 @@
   white-space: nowrap;
 }
 
-.collapse-button {
+.collapse-button,
+.clear-chat-button {
   border: 1px solid transparent;
   background: transparent;
   color: #8892a4;
@@ -81,7 +82,8 @@
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.collapse-button:hover {
+.collapse-button:hover,
+.clear-chat-button:hover {
   background: rgba(79, 126, 248, 0.12);
   color: #4f7ef8;
   border-color: rgba(79, 126, 248, 0.25);
@@ -212,4 +214,9 @@
   padding: 16px;
   color: #94a3b8;
   font-size: 12px;
+}
+
+.clear-chat-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

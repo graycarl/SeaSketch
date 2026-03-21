@@ -47,6 +47,8 @@ interface SeaSketchStore extends AppStateData {
   setPreviewSnapshot: (snapshot: { svg: string; error: string | null }) => void;
   loadChatForFile: (folderId: string, fileId: string) => Promise<void>;
   appendChatMessage: (folderId: string, fileId: string, message: ChatMessage) => Promise<void>;
+  clearChatForFile: (folderId: string, fileId: string) => Promise<void>;
+  deleteAttachmentsForFile: (folderId: string, fileId: string) => Promise<void>;
   loadAttachmentsForFile: (folderId: string, fileId: string) => Promise<void>;
   saveAttachment: (folderId: string, fileId: string, filename: string, content: string) => Promise<AttachmentMeta>;
   loadSettings: () => Promise<void>;
@@ -282,6 +284,18 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
         ...state.chatByFileId,
         [fileId]: [...(state.chatByFileId[fileId] ?? []), message],
       },
+    }));
+  },
+  clearChatForFile: async (folderId, fileId) => {
+    await invoke("clear_chat_only", { folderId, fileId });
+    set((state) => ({
+      chatByFileId: { ...state.chatByFileId, [fileId]: [] },
+    }));
+  },
+  deleteAttachmentsForFile: async (folderId, fileId) => {
+    await invoke("delete_attachments", { folderId, fileId });
+    set((state) => ({
+      attachmentsByFileId: { ...state.attachmentsByFileId, [fileId]: [] },
     }));
   },
   loadAttachmentsForFile: async (folderId, fileId) => {
