@@ -41,8 +41,21 @@ export interface AttachmentMeta {
   size: number;
 }
 
+export type AIProvider = 'openai' | 'gemini';
+
+export interface GeminiOAuthCredentials {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number; // Unix timestamp in milliseconds
+  project_id: string;
+  email?: string;
+}
+
 export interface AISettings {
-  apiKey: string;
-  apiHost: string;
-  model: string;
+  aiProvider: AIProvider;
+  openaiApiKey: string;
+  openaiApiHost: string;
+  geminiApiKey: string; // Deprecated: kept for backward compatibility
+  geminiOAuth?: GeminiOAuthCredentials; // New: OAuth credentials
+  geminiModel?: string;
 }

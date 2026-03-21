@@ -3,9 +3,11 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tauri::{AppHandle, Runtime, Manager, Emitter};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreExt};
 use uuid::Uuid;
+
+mod oauth;
 
 const STORE_PATH: &str = "seasketch-state.json";
 const STORE_KEY: &str = "state";
@@ -67,9 +69,13 @@ pub struct AttachmentMeta {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AISettings {
-    pub api_key: String,
-    pub api_host: String,
-    pub model: String,
+    pub ai_provider: String,
+    pub openai_api_key: String,
+    pub openai_api_host: String,
+    pub gemini_api_key: String,
+    #[serde(default, rename = "geminiOAuth")]
+    pub gemini_oauth: Option<oauth::OAuthCredentials>,
+    pub gemini_model: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,19 +117,34 @@ fn get_settings_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>, S
 }
 
 fn get_data_root<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String> {
-    app.path().app_data_dir().map_err(|e| e.to_string()).map(|dir| dir.join("seasketch"))
+    app.path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())
+        .map(|dir| dir.join("seasketch"))
 }
 
-fn file_workspace<R: Runtime>(app: &AppHandle<R>, folder_id: &str, file_id: &str) -> Result<PathBuf, String> {
+fn file_workspace<R: Runtime>(
+    app: &AppHandle<R>,
+    folder_id: &str,
+    file_id: &str,
+) -> Result<PathBuf, String> {
     let base = get_data_root(app)?;
     Ok(base.join("diagrams").join(folder_id).join(file_id))
 }
 
-fn chat_path<R: Runtime>(app: &AppHandle<R>, folder_id: &str, file_id: &str) -> Result<PathBuf, String> {
+fn chat_path<R: Runtime>(
+    app: &AppHandle<R>,
+    folder_id: &str,
+    file_id: &str,
+) -> Result<PathBuf, String> {
     Ok(file_workspace(app, folder_id, file_id)?.join(CHAT_FILENAME))
 }
 
-fn attachments_dir<R: Runtime>(app: &AppHandle<R>, folder_id: &str, file_id: &str) -> Result<PathBuf, String> {
+fn attachments_dir<R: Runtime>(
+    app: &AppHandle<R>,
+    folder_id: &str,
+    file_id: &str,
+) -> Result<PathBuf, String> {
     Ok(file_workspace(app, folder_id, file_id)?.join(ATTACHMENTS_DIR))
 }
 
@@ -144,7 +165,10 @@ fn parse_chat(contents: &str) -> Vec<ChatMessage> {
     let mut current_content: Vec<String> = Vec::new();
 
     for line in contents.lines() {
-        if let Some(meta_json) = line.strip_prefix("<!-- message: ").and_then(|s| s.strip_suffix(" -->")) {
+        if let Some(meta_json) = line
+            .strip_prefix("<!-- message: ")
+            .and_then(|s| s.strip_suffix(" -->"))
+        {
             if let Some(meta) = current_meta.take() {
                 let content = current_content.join("\n").trim_end().to_string();
                 messages.push(ChatMessage {
@@ -190,7 +214,11 @@ fn format_message(message: &ChatMessage) -> Result<String, String> {
         applied_mermaid: message.applied_mermaid,
     };
     let meta_json = serde_json::to_string(&meta).map_err(|e| e.to_string())?;
-    Ok(format!("<!-- message: {} -->\n{}\n\n", meta_json, message.content.trim_end()))
+    Ok(format!(
+        "<!-- message: {} -->\n{}\n\n",
+        meta_json,
+        message.content.trim_end()
+    ))
 }
 
 #[tauri::command]
@@ -216,11 +244,37 @@ async fn load_settings<R: Runtime>(app: AppHandle<R>) -> Result<AISettings, Stri
     let store = get_settings_store(&app)?;
     let value = store.get(SETTINGS_KEY.to_string());
     match value {
-        Some(data) => serde_json::from_value(data).map_err(|e| e.to_string()),
+        Some(data) => {
+            let settings: AISettings = serde_json::from_value(data).map_err(|e| e.to_string())?;
+            // Migration: if ai_provider is empty, migrate from old format
+            if settings.ai_provider.is_empty() {
+                Ok(AISettings {
+                    ai_provider: "openai".to_string(),
+                    openai_api_key: settings.openai_api_key,
+                    openai_api_host: if settings.openai_api_host.is_empty() {
+                        "https://api.openai.com".to_string()
+                    } else {
+                        settings.openai_api_host
+                    },
+                    gemini_api_key: String::new(),
+                    gemini_oauth: None,
+                    gemini_model: Some("gemini-3-flash-preview".to_string()),
+                })
+            } else {
+                let mut settings = settings;
+                if settings.gemini_model.is_none() {
+                    settings.gemini_model = Some("gemini-3-flash-preview".to_string());
+                }
+                Ok(settings)
+            }
+        }
         None => Ok(AISettings {
-            api_key: String::new(),
-            api_host: "https://api.openai.com".to_string(),
-            model: "gpt-4o-mini".to_string(),
+            ai_provider: "openai".to_string(),
+            openai_api_key: String::new(),
+            openai_api_host: "https://api.openai.com".to_string(),
+            gemini_api_key: String::new(),
+            gemini_oauth: None,
+            gemini_model: Some("gemini-3-flash-preview".to_string()),
         }),
     }
 }
@@ -234,7 +288,11 @@ async fn save_settings<R: Runtime>(app: AppHandle<R>, settings: AISettings) -> R
 }
 
 #[tauri::command]
-async fn read_chat<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String) -> Result<Vec<ChatMessage>, String> {
+async fn read_chat<R: Runtime>(
+    app: AppHandle<R>,
+    folder_id: String,
+    file_id: String,
+) -> Result<Vec<ChatMessage>, String> {
     let path = chat_path(&app, &folder_id, &file_id)?;
     if !path.exists() {
         return Ok(Vec::new());
@@ -244,7 +302,12 @@ async fn read_chat<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: St
 }
 
 #[tauri::command]
-async fn append_chat<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String, message: ChatMessage) -> Result<(), String> {
+async fn append_chat<R: Runtime>(
+    app: AppHandle<R>,
+    folder_id: String,
+    file_id: String,
+    message: ChatMessage,
+) -> Result<(), String> {
     let path = chat_path(&app, &folder_id, &file_id)?;
     ensure_parent(&path)?;
     let entry = format_message(&message)?;
@@ -253,12 +316,34 @@ async fn append_chat<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: 
         .append(true)
         .open(&path)
         .map_err(|e| e.to_string())?;
-    file.write_all(entry.as_bytes()).map_err(|e| e.to_string())?;
+    file.write_all(entry.as_bytes())
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
-async fn list_attachments<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String) -> Result<Vec<AttachmentMeta>, String> {
+async fn clear_chat<R: Runtime>(
+    app: AppHandle<R>,
+    folder_id: String,
+    file_id: String,
+) -> Result<(), String> {
+    let chat_file = chat_path(&app, &folder_id, &file_id)?;
+    if chat_file.exists() {
+        fs::remove_file(chat_file).map_err(|e| e.to_string())?;
+    }
+    let attachments = attachments_dir(&app, &folder_id, &file_id)?;
+    if attachments.exists() {
+        fs::remove_dir_all(attachments).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn list_attachments<R: Runtime>(
+    app: AppHandle<R>,
+    folder_id: String,
+    file_id: String,
+) -> Result<Vec<AttachmentMeta>, String> {
     let dir = attachments_dir(&app, &folder_id, &file_id)?;
     if !dir.exists() {
         return Ok(Vec::new());
@@ -269,7 +354,11 @@ async fn list_attachments<R: Runtime>(app: AppHandle<R>, folder_id: String, file
         let path = entry.path();
         if path.is_file() {
             let metadata = entry.metadata().map_err(|e| e.to_string())?;
-            let filename = path.file_name().and_then(|v| v.to_str()).unwrap_or_default().to_string();
+            let filename = path
+                .file_name()
+                .and_then(|v| v.to_str())
+                .unwrap_or_default()
+                .to_string();
             results.push(AttachmentMeta {
                 id: filename.clone(),
                 name: filename.clone(),
@@ -282,7 +371,13 @@ async fn list_attachments<R: Runtime>(app: AppHandle<R>, folder_id: String, file
 }
 
 #[tauri::command]
-async fn save_attachment<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String, filename: String, content: String) -> Result<AttachmentMeta, String> {
+async fn save_attachment<R: Runtime>(
+    app: AppHandle<R>,
+    folder_id: String,
+    file_id: String,
+    filename: String,
+    content: String,
+) -> Result<AttachmentMeta, String> {
     if content.len() > MAX_ATTACHMENT_BYTES {
         return Err("Attachment exceeds size limit".to_string());
     }
@@ -300,20 +395,53 @@ async fn save_attachment<R: Runtime>(app: AppHandle<R>, folder_id: String, file_
 }
 
 #[tauri::command]
-async fn read_attachment<R: Runtime>(app: AppHandle<R>, folder_id: String, file_id: String, filename: String) -> Result<String, String> {
+async fn read_attachment<R: Runtime>(
+    app: AppHandle<R>,
+    folder_id: String,
+    file_id: String,
+    filename: String,
+) -> Result<String, String> {
     let dir = attachments_dir(&app, &folder_id, &file_id)?;
     let path = dir.join(filename);
     fs::read_to_string(path).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+async fn start_gemini_oauth<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<oauth::OAuthCredentials, String> {
+    let app_clone = app.clone();
+    oauth::start_oauth_flow(
+        move |url| {
+            let _ = app_clone.emit("oauth_url", url);
+        },
+        move |progress| {
+            let _ = app.emit("oauth_progress", progress);
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+async fn refresh_gemini_token(
+    refresh_token: String,
+    project_id: String,
+) -> Result<oauth::OAuthCredentials, String> {
+    let mut creds = oauth::refresh_token(&refresh_token).await?;
+    creds.project_id = project_id;
+    Ok(creds)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .menu(|app| {
             use tauri::menu::{Menu, MenuItem, Submenu};
-            let settings_item = MenuItem::with_id(app, "open-settings", "Settings", true, None::<&str>)?;
+            let settings_item =
+                MenuItem::with_id(app, "open-settings", "Settings", true, None::<&str>)?;
             let menu = Menu::default(app)?;
             let ai_menu = Submenu::with_items(app, "AI", true, &[&settings_item])?;
             menu.append(&ai_menu)?;
@@ -331,9 +459,12 @@ pub fn run() {
             save_settings,
             read_chat,
             append_chat,
+            clear_chat,
             list_attachments,
             save_attachment,
-            read_attachment
+            read_attachment,
+            start_gemini_oauth,
+            refresh_gemini_token
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

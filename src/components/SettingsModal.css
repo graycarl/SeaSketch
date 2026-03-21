@@ -26,33 +26,72 @@
   color: #8892a4;
 }
 
-.settings-modal label {
+.setting-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 12px;
-  font-size: 12px;
+  margin-bottom: 14px;
 }
 
-.settings-modal input {
+.setting-group label {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.setting-group input,
+.setting-group select {
   background: #0b1120;
   border: 1px solid #1f2937;
   color: #e2e8f0;
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 12px;
+  cursor: pointer;
 }
 
-.settings-modal input:focus {
+.setting-group input {
+  cursor: text;
+}
+
+.setting-group input:focus,
+.setting-group select:focus {
   outline: none;
   border-color: rgba(79, 126, 248, 0.6);
+}
+
+.setting-group .hint {
+  font-size: 11px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.oauth-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+}
+
+.oauth-email {
+  flex: 1;
+  font-size: 12px;
+  color: #e2e8f0;
+}
+
+.btn.small {
+  padding: 4px 8px;
+  font-size: 11px;
 }
 
 .settings-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .settings-actions .btn {
@@ -72,4 +111,68 @@
 .settings-actions .btn.primary {
   background: #4f7ef8;
   color: #0f1117;
+}
+
+/* Confirmation Dialog */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.confirm-dialog {
+  background: #0f1117;
+  border: 1px solid #2a3147;
+  border-radius: 12px;
+  padding: 20px;
+  width: 340px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.confirm-dialog h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.confirm-dialog p {
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-actions .btn {
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.confirm-actions .btn.secondary {
+  background: transparent;
+  border-color: #2a3147;
+  color: #94a3b8;
+}
+
+.confirm-actions .btn.primary {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+}
+
+.confirm-actions .btn.primary:hover {
+  background: #dc2626;
 }

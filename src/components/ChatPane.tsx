@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSeaSketchStore } from "../store";
 import { SAMPLES_FOLDER_ID, samplesFolder } from "../samples";
 import { ChatMessage } from "../types";
-import { requestMermaidUpdate } from "../ai/openai";
+import { requestMermaidUpdate as requestOpenAI } from "../ai/openai";
+import { requestMermaidUpdate as requestGemini } from "../ai/gemini";
 import { nanoid } from "nanoid";
 import { invoke } from "@tauri-apps/api/core";
 import ReactMarkdown from "react-markdown";
@@ -27,6 +28,7 @@ export function ChatPane() {
     appendChatMessage,
     saveAttachment,
     settings,
+    saveSettings,
     setChatLoading,
   } = useSeaSketchStore();
 
@@ -66,11 +68,24 @@ export function ChatPane() {
   const handleSend = async () => {
     if (!currentFile || !currentFolderId || !currentFileId) return;
     if (!draft.trim()) return;
-    if (!settings.apiKey) {
+    
+    // Check authentication based on provider
+    const isOpenAI = settings.aiProvider === "openai";
+    const providerName = isOpenAI ? "OpenAI" : "Gemini";
+    
+    let isAuthenticated = false;
+    if (isOpenAI) {
+      isAuthenticated = !!settings.openaiApiKey;
+    } else {
+      // Gemini: check OAuth first, fall back to API key
+      isAuthenticated = !!(settings.geminiOAuth || settings.geminiApiKey);
+    }
+    
+    if (!isAuthenticated) {
       await appendChatMessage(currentFolderId, currentFileId, {
         id: nanoid(),
         role: "system",
-        content: "OpenAI API Key 未配置，请在 Settings 中设置。",
+        content: `${providerName} 未认证，请在 Settings 中${isOpenAI ? '设置 API Key' : '登录 Google 账号'}。`,
         timestamp: new Date().toISOString(),
       });
       return;
@@ -100,7 +115,7 @@ export function ChatPane() {
         }),
       );
 
-      const result = await requestMermaidUpdate({
+      const requestPayload = {
         settings,
         messages: [...messages, userMessage],
         mermaidSource: editorValue,
@@ -108,7 +123,17 @@ export function ChatPane() {
         previewError: previewSnapshot.error,
         attachmentContents,
         userPrompt: userMessage.content,
-      });
+        onTokenRefreshed: async (creds: any) => {
+          await saveSettings({
+            ...settings,
+            geminiOAuth: creds,
+          });
+        }
+      };
+
+      const result = isOpenAI 
+        ? await requestOpenAI(requestPayload)
+        : await requestGemini(requestPayload);
 
       const normalizedCurrent = editorValue.replace(/\r\n/g, "\n").trimEnd();
       const normalizedNext = (result.mermaid ?? "").replace(/\r\n/g, "\n").trimEnd();

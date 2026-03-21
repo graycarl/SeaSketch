@@ -1,5 +1,7 @@
 # SeaSketch Agent Notes
 
+必须使用中文和用户对话。
+
 ## Project Goals
 - Build "SeaSketch", a Tauri + React macOS app for editing Mermaid diagrams with delayed live preview.
 - Provide in-app management of diagram files organized by user-defined folders.

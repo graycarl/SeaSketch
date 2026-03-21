@@ -51,6 +51,7 @@ interface SeaSketchStore extends AppStateData {
   saveAttachment: (folderId: string, fileId: string, filename: string, content: string) => Promise<AttachmentMeta>;
   loadSettings: () => Promise<void>;
   saveSettings: (settings: AISettings) => Promise<void>;
+  updateAIProvider: (provider: AISettings["aiProvider"]) => Promise<void>;
   openSettings: () => void;
   closeSettings: () => void;
   loadState: () => Promise<void>;
@@ -103,9 +104,12 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
   attachmentsByFileId: {},
   isChatLoadingByFileId: {},
   settings: {
-    apiKey: "",
-    apiHost: "https://api.openai.com",
-    model: "gpt-4o-mini",
+    aiProvider: "openai",
+    openaiApiKey: "",
+    openaiApiHost: "https://api.openai.com",
+    geminiApiKey: "",
+    geminiOAuth: undefined,
+    geminiModel: "gemini-3-flash-preview",
   },
   isSettingsOpen: false,
   selectFile: (folderId, fileId) => {
@@ -305,6 +309,30 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
   saveSettings: async (settings) => {
     await invoke("save_settings", { settings });
     set({ settings });
+  },
+  updateAIProvider: async (provider) => {
+    const currentSettings = get().settings;
+    const newSettings = { ...currentSettings, aiProvider: provider };
+    
+    // Update settings in store immediately
+    set({ settings: newSettings });
+    
+    // Clear all chats when switching provider
+    const clearChatPromises = get().folders
+      .filter(folder => folder.id !== SAMPLES_FOLDER_ID)
+      .flatMap(folder => 
+        folder.files.map(file => 
+          invoke("clear_chat", { folderId: folder.id, fileId: file.id })
+        )
+      );
+    
+    await Promise.all(clearChatPromises).catch(() => {});
+    
+    // Clear in-memory chat state
+    set({ chatByFileId: {}, attachmentsByFileId: {} });
+    
+    // Save new settings to backend
+    await invoke("save_settings", { settings: newSettings });
   },
   openSettings: () => set({ isSettingsOpen: true }),
   closeSettings: () => set({ isSettingsOpen: false }),
