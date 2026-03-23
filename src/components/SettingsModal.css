@@ -176,3 +176,9 @@
 .confirm-actions .btn.primary:hover {
   background: #dc2626;
 }
+
+.confirm-actions .btn.primary:disabled {
+  background: #4b5563;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
