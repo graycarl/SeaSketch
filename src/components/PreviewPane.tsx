@@ -49,7 +49,7 @@ export function PreviewPane() {
 
   const MIN_SCALE = 0.25;
   const MAX_SCALE = 5;
-  const SCALE_STEP = 0.05;
+  const SCALE_STEP = 0.01;
 
   const clampScale = useCallback((value: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, value)), []);
 
