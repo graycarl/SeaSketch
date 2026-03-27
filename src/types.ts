@@ -2,6 +2,7 @@ export interface FileNode {
   id: string;
   name: string;
   content: string;
+  previewBackground?: "dark" | "light";
 }
 
 export interface FolderNode {
@@ -20,7 +21,6 @@ export interface AppStateData {
   currentFolderId: string | null;
   currentFileId: string | null;
   layout?: LayoutState;
-  previewBackground?: "dark" | "light";
 }
 
 export type ChatRole = "user" | "assistant" | "system";

@@ -12,7 +12,7 @@ import "./PreviewPane.css";
 mermaid.initialize({ startOnLoad: false, theme: "dark", suppressErrorRendering: true });
 
 export function PreviewPane() {
-  const { folders, currentFolderId, currentFileId, sampleContents, previewBackground, togglePreviewBackground, setPreviewSnapshot, showToast, toast } = useSeaSketchStore();
+  const { folders, currentFolderId, currentFileId, sampleContents, sampleBackgrounds, togglePreviewBackground, setPreviewSnapshot, showToast, toast } = useSeaSketchStore();
 
   const isSamples = currentFolderId === SAMPLES_FOLDER_ID;
 
@@ -235,7 +235,13 @@ export function PreviewPane() {
     };
   }, [isDragging, scheduleTransform]);
 
-  const bg = previewBackground ?? "dark";
+  const bg = useMemo(() => {
+    if (!currentFile) return "dark";
+    if (isSamples) {
+      return sampleBackgrounds[currentFile.id] ?? "dark";
+    }
+    return currentFile.previewBackground ?? "dark";
+  }, [currentFile, isSamples, sampleBackgrounds]);
 
   const handleCopySvg = useCallback(async () => {
     const svg = lastSuccessfulSvg.current;
