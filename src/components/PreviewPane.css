@@ -26,6 +26,13 @@
   color: #8892a4;
 }
 
+.preview-copy-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
 .preview-copy-button {
   width: 24px;
   height: 24px;
@@ -39,7 +46,6 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   padding: 0;
-  margin-left: auto;
 }
 
 .preview-copy-button:hover {

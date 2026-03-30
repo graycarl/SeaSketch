@@ -387,13 +387,15 @@ export function PreviewPane() {
     <div className="preview-pane">
       <div className="preview-header">
         <h2>Preview</h2>
-        <button className="preview-copy-button" onClick={handleCopySvg} title="Copy SVG">
-          <Copy size={14} />
-        </button>
-        <button className="preview-copy-button" onClick={handleCopyPng} title="Copy PNG">
-          <ImageIcon size={14} />
-        </button>
         {error && <span className="error-text">{error}</span>}
+        <div className="preview-copy-buttons">
+          <button className="preview-copy-button" onClick={handleCopySvg} title="Copy SVG">
+            <Copy size={14} />
+          </button>
+          <button className="preview-copy-button" onClick={handleCopyPng} title="Copy PNG">
+            <ImageIcon size={14} />
+          </button>
+        </div>
       </div>
       <div
         className={`preview-content bg-${bg}${isDragging ? " dragging" : ""}`}
