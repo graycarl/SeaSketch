@@ -21,10 +21,22 @@ const ATTACHMENTS_DIR: &str = "attachments";
 const MAX_ATTACHMENT_BYTES: usize = 5 * 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnapshotEntry {
+    pub id: String,
+    pub created_at: String,
+    pub note: Option<String>,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FileNode {
     pub id: String,
     pub name: String,
     pub content: String,
+    pub preview_background: Option<String>,
+    pub snapshots: Option<Vec<SnapshotEntry>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,6 +115,8 @@ impl Default for AppState {
                     id: file_id.clone(),
                     name: "New Diagram".to_string(),
                     content: "graph TD\n    A[SeaSketch] --> B[Start];".to_string(),
+                    preview_background: None,
+                    snapshots: None,
                 }],
             }],
             current_folder_id: Some(folder_id),

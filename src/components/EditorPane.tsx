@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSeaSketchStore } from "../store";
 import { samplesFolder, SAMPLES_FOLDER_ID } from "../samples";
 import { CodeEditor } from "./CodeEditor";
@@ -35,9 +35,21 @@ export function EditorPane() {
     updateFileContent,
     sampleContents,
     updateSampleContent,
+    createSnapshot,
   } = useSeaSketchStore();
 
   const isSamples = currentFolderId === SAMPLES_FOLDER_ID;
+
+  const [isSnapshotInputOpen, setIsSnapshotInputOpen] = useState(false);
+  const [snapshotNote, setSnapshotNote] = useState("");
+  const snapshotInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (isSnapshotInputOpen && snapshotInputRef.current) {
+      snapshotInputRef.current.focus();
+      snapshotInputRef.current.select();
+    }
+  }, [isSnapshotInputOpen]);
 
   const currentFolder = isSamples
     ? samplesFolder
@@ -70,6 +82,23 @@ export function EditorPane() {
     }
   };
 
+  const handleCreateSnapshot = () => {
+    if (!currentFolder || !currentFile || isSamples) return;
+    setIsSnapshotInputOpen(true);
+  };
+
+  const handleSnapshotSave = () => {
+    if (!currentFolder || !currentFile || isSamples) return;
+    createSnapshot(currentFolder.id, currentFile.id, snapshotNote);
+    setSnapshotNote("");
+    setIsSnapshotInputOpen(false);
+  };
+
+  const handleSnapshotCancel = () => {
+    setSnapshotNote("");
+    setIsSnapshotInputOpen(false);
+  };
+
   const handleThemeChange = (theme: string) => {
     const { config: currentConfig } = parseFrontmatter(editorValue);
     const newContent = writeFrontmatter(editorValue, {
@@ -93,18 +122,58 @@ export function EditorPane() {
       <div className="editor-header">
         <h2>Editor</h2>
         <div className="editor-header-controls">
-          <Dropdown
-            label="Theme"
-            value={currentTheme}
-            options={THEME_OPTIONS}
-            onChange={handleThemeChange}
-          />
-          <Dropdown
-            label="Look"
-            value={currentLook}
-            options={LOOK_OPTIONS}
-            onChange={handleLookChange}
-          />
+          {!isSamples && isSnapshotInputOpen && (
+            <div className="editor-snapshot-input">
+              <input
+                ref={snapshotInputRef}
+                type="text"
+                placeholder="快照备注（可选）"
+                value={snapshotNote}
+                onChange={(e) => setSnapshotNote(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSnapshotSave();
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    handleSnapshotCancel();
+                  }
+                }}
+              />
+              <button type="button" className="snapshot-action" onClick={handleSnapshotSave}>
+                保存
+              </button>
+              <button type="button" className="snapshot-action ghost" onClick={handleSnapshotCancel}>
+                取消
+              </button>
+            </div>
+          )}
+          {!isSamples && !isSnapshotInputOpen && (
+            <button
+              className="editor-snapshot-btn"
+              type="button"
+              onClick={handleCreateSnapshot}
+            >
+              创建快照
+            </button>
+          )}
+          {!isSnapshotInputOpen && (
+            <>
+              <Dropdown
+                label="Theme"
+                value={currentTheme}
+                options={THEME_OPTIONS}
+                onChange={handleThemeChange}
+              />
+              <Dropdown
+                label="Look"
+                value={currentLook}
+                options={LOOK_OPTIONS}
+                onChange={handleLookChange}
+              />
+            </>
+          )}
         </div>
       </div>
       <CodeEditor

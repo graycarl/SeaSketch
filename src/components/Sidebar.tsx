@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import { useEffect, useRef, useState } from "react";
-import { FilePlus, Folder, FolderOpen, FolderPlus, Trash2, FileText, BookOpen } from "lucide-react";
+import { FilePlus, Folder, FolderOpen, FolderPlus, Trash2, FileText, BookOpen, ChevronRight, ChevronDown } from "lucide-react";
 import { useSeaSketchStore } from "../store";
 import { samplesFolder, SAMPLES_FOLDER_ID } from "../samples";
 import "./Sidebar.css";
@@ -21,6 +21,8 @@ export function Sidebar() {
     renameFile,
     deleteFolder,
     deleteFile,
+    restoreSnapshot,
+    deleteSnapshot,
   } = useSeaSketchStore();
 
   const allFolders = [samplesFolder, ...folders];
@@ -29,6 +31,8 @@ export function Sidebar() {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [expandedSnapshots, setExpandedSnapshots] = useState<Set<string>>(new Set());
+  const [pendingSnapshotDeleteId, setPendingSnapshotDeleteId] = useState<string | null>(null);
 
   const fileEditingInputRef = useRef<HTMLInputElement | null>(null);
   const folderEditingInputRef = useRef<HTMLInputElement | null>(null);
@@ -47,6 +51,10 @@ export function Sidebar() {
       });
     }
   }, [currentFolderId]);
+
+  useEffect(() => {
+    setPendingSnapshotDeleteId(null);
+  }, [currentFileId]);
 
   useEffect(() => {
     if (fileEditingInputRef.current) {
@@ -95,6 +103,18 @@ export function Sidebar() {
     });
   };
 
+  const toggleSnapshots = (fileId: string) => {
+    setExpandedSnapshots((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+      return next;
+    });
+  };
+
   const isFolderDeletePending = (folderId: string) =>
     pendingDelete?.type === "folder" && pendingDelete.folderId === folderId;
 
@@ -102,6 +122,16 @@ export function Sidebar() {
     pendingDelete?.type === "file" &&
     pendingDelete.folderId === folderId &&
     pendingDelete.fileId === fileId;
+
+  const formatSnapshotLabel = (createdAt: string, note?: string) => {
+    const label = new Date(createdAt).toLocaleString("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return note?.trim() ? `${label} · ${note}` : label;
+  };
 
   return (
     <aside className="sidebar">
@@ -203,76 +233,137 @@ export function Sidebar() {
                       currentFolderId === folder.id && currentFileId === file.id;
                     const isEditing = !isSamples && editingFileId === file.id;
                     const isFilePending = !isSamples && isFileDeletePending(folder.id, file.id);
+                    const snapshots = file.snapshots ?? [];
+                    const isSnapshotsExpanded = expandedSnapshots.has(file.id);
 
                     return (
                       <li
                         key={file.id}
                         className={classNames("file-item", { active: isActive })}
-                        onClick={() => selectFile(folder.id, file.id)}
-                        onDoubleClick={
-                          isSamples
-                            ? undefined
-                            : (e) => {
-                                e.stopPropagation();
-                                setEditingFileId(file.id);
-                              }
-                        }
                       >
-                        <FileText size={13} className="file-icon" />
-                        {isEditing ? (
-                          <input
-                            ref={(el) => {
-                              if (isEditing) {
-                                fileEditingInputRef.current = el;
-                              }
-                            }}
-                            className="file-name-input"
-                            value={file.name}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) =>
-                              renameFile(folder.id, file.id, e.target.value)
-                            }
-                            onBlur={() => setEditingFileId(null)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                setEditingFileId(null);
-                              }
-                            }}
-                          />
-                        ) : (
-                          <span className="file-name-display">{file.name}</span>
-                        )}
-                        {isFilePending ? (
-                          <div className="delete-confirm" ref={deleteConfirmRef} onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className="file-row"
+                          onClick={() => selectFile(folder.id, file.id)}
+                          onDoubleClick={
+                            isSamples
+                              ? undefined
+                              : (e) => {
+                                  e.stopPropagation();
+                                  setEditingFileId(file.id);
+                                }
+                          }
+                        >
+                          {!isSamples && isActive && snapshots.length > 0 && (
                             <button
-                              className="delete-confirm-ok"
+                              className="snapshot-toggle"
+                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteConfirm();
+                                toggleSnapshots(file.id);
                               }}
+                              title={isSnapshotsExpanded ? "收起快照" : "展开快照"}
                             >
-                              <Trash2 size={11} />
-                              删除
+                              {isSnapshotsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                             </button>
-                          </div>
-                        ) : (
-                          !isSamples && (
-                            <button
-                              className="delete-file"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPendingDelete({
-                                  type: "file",
-                                  folderId: folder.id,
-                                  fileId: file.id,
-                                });
+                          )}
+                          <FileText size={13} className="file-icon" />
+                          {isEditing ? (
+                            <input
+                              ref={(el) => {
+                                if (isEditing) {
+                                  fileEditingInputRef.current = el;
+                                }
                               }}
-                              title="Delete file"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )
+                              className="file-name-input"
+                              value={file.name}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) =>
+                                renameFile(folder.id, file.id, e.target.value)
+                              }
+                              onBlur={() => setEditingFileId(null)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  setEditingFileId(null);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <span className="file-name-display">{file.name}</span>
+                          )}
+                          {isFilePending ? (
+                            <div className="delete-confirm" ref={deleteConfirmRef} onClick={(e) => e.stopPropagation()}>
+                              <button
+                                className="delete-confirm-ok"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteConfirm();
+                                }}
+                              >
+                                <Trash2 size={11} />
+                                删除
+                              </button>
+                            </div>
+                          ) : (
+                            !isSamples && (
+                              <button
+                                className="delete-file"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPendingDelete({
+                                    type: "file",
+                                    folderId: folder.id,
+                                    fileId: file.id,
+                                  });
+                                }}
+                                title="Delete file"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )
+                          )}
+                        </div>
+                        {isActive && !isSamples && snapshots.length > 0 && isSnapshotsExpanded && (
+                          <ul className="snapshot-list">
+                            {snapshots.map((snapshot) => (
+                              <li key={snapshot.id} className="snapshot-item">
+                                <button
+                                  className="snapshot-button"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    restoreSnapshot(folder.id, file.id, snapshot.id);
+                                  }}
+                                >
+                                  {formatSnapshotLabel(snapshot.createdAt, snapshot.note)}
+                                </button>
+                                {pendingSnapshotDeleteId === snapshot.id ? (
+                                  <button
+                                    className="snapshot-delete-confirm"
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteSnapshot(folder.id, file.id, snapshot.id);
+                                      setPendingSnapshotDeleteId(null);
+                                    }}
+                                  >
+                                    确认删除
+                                  </button>
+                                ) : (
+                                  <button
+                                    className="snapshot-delete"
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPendingSnapshotDeleteId(snapshot.id);
+                                    }}
+                                  >
+                                    删除
+                                  </button>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
                         )}
                       </li>
                     );

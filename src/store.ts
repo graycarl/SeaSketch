@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
-import { AppStateData, FolderNode, FileNode, ChatMessage, AttachmentMeta, AISettings } from "./types";
+import { AppStateData, FolderNode, FileNode, ChatMessage, AttachmentMeta, AISettings, SnapshotEntry } from "./types";
 import { invoke } from "@tauri-apps/api/core";
 import { SAMPLES_FOLDER_ID } from "./samples";
 
@@ -20,6 +20,7 @@ const normalizeFolders = (folders: FolderNode[]): FolderNode[] =>
       return {
         ...file,
         previewBackground,
+        snapshots: file.snapshots ?? [],
       };
     });
     return {
@@ -76,6 +77,9 @@ interface SeaSketchStore extends AppStateData {
   deleteFile: (folderId: string, fileId: string) => void;
   updateFileContent: (folderId: string, fileId: string, content: string) => void;
   updateSampleContent: (fileId: string, content: string) => void;
+  createSnapshot: (folderId: string, fileId: string, note?: string) => void;
+  restoreSnapshot: (folderId: string, fileId: string, snapshotId: string) => void;
+  deleteSnapshot: (folderId: string, fileId: string, snapshotId: string) => void;
   updateLayout: (layout: AppStateData["layout"]) => void;
   togglePreviewBackground: () => Promise<void>;
   setPreviewSnapshot: (snapshot: { svg: string; error: string | null }) => void;
@@ -282,6 +286,74 @@ export const useSeaSketchStore = create<SeaSketchStore>((set, get) => ({
       sampleContents: { ...state.sampleContents, [fileId]: content },
     }));
     // Not persisted — intentionally no debouncedSave call
+  },
+  createSnapshot: (folderId, fileId, note) => {
+    if (folderId === SAMPLES_FOLDER_ID) {
+      get().showToast("示例文件不支持快照", "info");
+      return;
+    }
+    const snapshot: SnapshotEntry = {
+      id: nanoid(),
+      createdAt: new Date().toISOString(),
+      note: note?.trim() ? note.trim() : undefined,
+      content: get().folders
+        .find((folder) => folder.id === folderId)
+        ?.files.find((file) => file.id === fileId)?.content ?? "",
+    };
+    const folders = get().folders.map((folder) =>
+      folder.id === folderId
+        ? {
+            ...folder,
+            files: folder.files.map((file) =>
+              file.id === fileId
+                ? { ...file, snapshots: [...(file.snapshots ?? []), snapshot] }
+                : file,
+            ),
+          }
+        : folder,
+    );
+    set({ folders });
+    debouncedSave(
+      getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout),
+    );
+  },
+  restoreSnapshot: (folderId, fileId, snapshotId) => {
+    const targetFolder = get().folders.find((folder) => folder.id === folderId);
+    const targetFile = targetFolder?.files.find((file) => file.id === fileId);
+    const snapshot = targetFile?.snapshots?.find((item) => item.id === snapshotId);
+    if (!snapshot) return;
+    const folders = get().folders.map((folder) =>
+      folder.id === folderId
+        ? {
+            ...folder,
+            files: folder.files.map((file) =>
+              file.id === fileId ? { ...file, content: snapshot.content } : file,
+            ),
+          }
+        : folder,
+    );
+    set({ folders });
+    debouncedSave(
+      getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout),
+    );
+  },
+  deleteSnapshot: (folderId, fileId, snapshotId) => {
+    const folders = get().folders.map((folder) =>
+      folder.id === folderId
+        ? {
+            ...folder,
+            files: folder.files.map((file) =>
+              file.id === fileId
+                ? { ...file, snapshots: (file.snapshots ?? []).filter((item) => item.id !== snapshotId) }
+                : file,
+            ),
+          }
+        : folder,
+    );
+    set({ folders });
+    debouncedSave(
+      getStateSnapshot(folders, get().currentFolderId, get().currentFileId, get().layout),
+    );
   },
   updateLayout: (layout) => {
     const currentLayout = get().layout ?? {};

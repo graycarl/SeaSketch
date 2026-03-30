@@ -1,8 +1,16 @@
+export interface SnapshotEntry {
+  id: string;
+  createdAt: string;
+  note?: string;
+  content: string;
+}
+
 export interface FileNode {
   id: string;
   name: string;
   content: string;
   previewBackground?: "dark" | "light";
+  snapshots?: SnapshotEntry[];
 }
 
 export interface FolderNode {

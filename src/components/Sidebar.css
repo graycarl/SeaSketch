@@ -160,26 +160,114 @@
 }
 
 .file-item {
+  position: relative;
+}
+
+.file-row {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 4px 8px 4px 26px;
   cursor: pointer;
   min-height: 28px;
-  position: relative;
 }
 
-.file-item:hover {
+.snapshot-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  color: #8892a4;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.snapshot-toggle:hover {
+  background: #2d3a55;
+  color: #e2e8f0;
+}
+
+.file-item:hover .file-row {
   background: #1e2538;
 }
 
-.file-item.active {
+.file-item.active .file-row {
   background: #2d3a55;
 }
 
 .file-item:hover .delete-file,
 .file-item.active .delete-file {
   opacity: 1;
+}
+
+.snapshot-list {
+  list-style: none;
+  margin: 2px 0 6px 0;
+  padding: 0 8px 0 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.snapshot-item {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.snapshot-button {
+  flex: 1;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snapshot-button:hover {
+  background: #1e2538;
+  color: #e2e8f0;
+}
+
+.snapshot-delete,
+.snapshot-delete-confirm {
+  border: none;
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.snapshot-delete {
+  background: transparent;
+  color: #94a3b8;
+}
+
+.snapshot-delete:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.snapshot-delete-confirm {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.snapshot-delete-confirm:hover {
+  background: rgba(239, 68, 68, 0.3);
 }
 
 .file-icon {
