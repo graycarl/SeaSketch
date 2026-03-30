@@ -40,5 +40,20 @@
 ### 测试规范
 - **工具函数**：所有新添加的纯函数必须在 `src/utils/*.test.ts` 中编写对应测试
 - **Store 逻辑**：核心状态变更逻辑必须在 `src/store.test.ts` 中覆盖
+- **AI 模块**：AI 相关的请求逻辑必须在 `src/ai/*.test.ts` 中覆盖
+- **Hooks**：自定义 Hook 必须在 `src/hooks/*.test.ts` 中覆盖
 - **Rust 命令**：文件系统操作等可测试逻辑必须在 `src-tauri/src/lib_test.rs` 中覆盖
 - **测试失败修复**：如果测试失败，优先修复代码而非跳过或删除测试
+
+### 当前测试覆盖
+| 模块 | 测试文件 | 测试数量 |
+|------|---------|---------|
+| Utils | `utils/debounce.test.ts` | 5 |
+| Utils | `utils/frontmatter.test.ts` | 18 |
+| Store | `store.test.ts` | 17 |
+| Hooks | `hooks/useDebouncedValue.test.ts` | 11 |
+| AI | `ai/openai.test.ts` | 14 |
+| AI | `ai/gemini.test.ts` | 14 |
+| **前端总计** | - | **79** |
+| Rust | `src-tauri/src/lib_test.rs` | 30 |
+| **总计** | - | **109** |
