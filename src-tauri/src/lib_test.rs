@@ -228,4 +228,298 @@ Line 3"#;
         let content = fs::read_to_string(&deep_path).unwrap();
         assert_eq!(content, "deep content");
     }
+
+    // Settings serialization tests
+    #[test]
+    fn test_ai_settings_default() {
+        let settings = AISettings {
+            ai_provider: "openai".to_string(),
+            openai_api_key: "".to_string(),
+            openai_api_host: "https://api.openai.com".to_string(),
+            openai_model: Some("gpt-4o".to_string()),
+            gemini_api_key: "".to_string(),
+            gemini_oauth: None,
+            gemini_model: Some("gemini-3-flash-preview".to_string()),
+        };
+        
+        assert_eq!(settings.ai_provider, "openai");
+        assert_eq!(settings.openai_api_host, "https://api.openai.com");
+    }
+
+    #[test]
+    fn test_ai_settings_serialization() {
+        let settings = AISettings {
+            ai_provider: "gemini".to_string(),
+            openai_api_key: "sk-test".to_string(),
+            openai_api_host: "https://custom.api.com".to_string(),
+            openai_model: Some("gpt-4".to_string()),
+            gemini_api_key: "gemini-key".to_string(),
+            gemini_oauth: None,
+            gemini_model: Some("gemini-pro".to_string()),
+        };
+        
+        let json = serde_json::to_string(&settings).unwrap();
+        assert!(json.contains("gemini"));
+        assert!(json.contains("sk-test"));
+        
+        let deserialized: AISettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.ai_provider, "gemini");
+        assert_eq!(deserialized.openai_api_key, "sk-test");
+    }
+
+    #[test]
+    fn test_ai_settings_with_oauth() {
+        let oauth = oauth::OAuthCredentials {
+            access_token: "access123".to_string(),
+            refresh_token: "refresh456".to_string(),
+            expires_at: 1234567890,
+            project_id: "project-abc".to_string(),
+            email: Some("test@example.com".to_string()),
+        };
+        
+        let settings = AISettings {
+            ai_provider: "gemini".to_string(),
+            openai_api_key: "".to_string(),
+            openai_api_host: "https://api.openai.com".to_string(),
+            openai_model: Some("gpt-4o".to_string()),
+            gemini_api_key: "".to_string(),
+            gemini_oauth: Some(oauth),
+            gemini_model: Some("gemini-3-flash-preview".to_string()),
+        };
+        
+        let json = serde_json::to_string(&settings).unwrap();
+        assert!(json.contains("access123"));
+        assert!(json.contains("project-abc"));
+        
+        let deserialized: AISettings = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.gemini_oauth.is_some());
+        let oauth = deserialized.gemini_oauth.unwrap();
+        assert_eq!(oauth.access_token, "access123");
+        assert_eq!(oauth.email, Some("test@example.com".to_string()));
+    }
+
+    // FileNode and FolderNode tests
+    #[test]
+    fn test_filenode_with_snapshots() {
+        let file = FileNode {
+            id: "file-1".to_string(),
+            name: "test.mmd".to_string(),
+            content: "graph TD\nA-->B".to_string(),
+            preview_background: Some("dark".to_string()),
+            snapshots: Some(vec![
+                SnapshotEntry {
+                    id: "snap-1".to_string(),
+                    created_at: "2024-01-01T00:00:00Z".to_string(),
+                    note: Some("Initial version".to_string()),
+                    content: "graph TD\nA-->B".to_string(),
+                },
+            ]),
+        };
+        
+        assert_eq!(file.snapshots.as_ref().unwrap().len(), 1);
+        assert_eq!(file.snapshots.unwrap()[0].note, Some("Initial version".to_string()));
+    }
+
+    #[test]
+    fn test_foldernode_serialization() {
+        let folder = FolderNode {
+            id: "folder-1".to_string(),
+            name: "My Folder".to_string(),
+            files: vec![
+                FileNode {
+                    id: "file-1".to_string(),
+                    name: "diagram.mmd".to_string(),
+                    content: "graph TD".to_string(),
+                    preview_background: None,
+                    snapshots: None,
+                },
+            ],
+        };
+        
+        let json = serde_json::to_string(&folder).unwrap();
+        let deserialized: FolderNode = serde_json::from_str(&json).unwrap();
+        
+        assert_eq!(deserialized.name, "My Folder");
+        assert_eq!(deserialized.files.len(), 1);
+        assert_eq!(deserialized.files[0].name, "diagram.mmd");
+    }
+
+    // LayoutState tests
+    #[test]
+    fn test_layout_state_serialization() {
+        let layout = LayoutState {
+            sidebar_width: Some(250.0),
+            editor_width: Some(400.0),
+        };
+        
+        let json = serde_json::to_string(&layout).unwrap();
+        assert!(json.contains("250"));
+        assert!(json.contains("400"));
+        
+        let deserialized: LayoutState = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.sidebar_width, Some(250.0));
+        assert_eq!(deserialized.editor_width, Some(400.0));
+    }
+
+    // Snapshot entry tests
+    #[test]
+    fn test_snapshot_entry_without_note() {
+        let snapshot = SnapshotEntry {
+            id: "snap-1".to_string(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            note: None,
+            content: "graph TD".to_string(),
+        };
+        
+        assert!(snapshot.note.is_none());
+        let json = serde_json::to_string(&snapshot).unwrap();
+        assert!(json.contains("snap-1"));
+    }
+
+    // Edge cases for parse_chat
+    #[test]
+    fn test_parse_chat_with_special_characters() {
+        let content = r#"<!-- message: {"id":"msg-1","role":"user","timestamp":"2024-01-01"} -->
+Line with special chars: <>&""#;
+        
+        let messages = parse_chat(content);
+        assert_eq!(messages.len(), 1);
+        assert!(messages[0].content.contains("<>&\""));
+    }
+
+    #[test]
+    fn test_parse_chat_with_empty_lines_between() {
+        let content = r#"<!-- message: {"id":"msg-1","role":"user","timestamp":"2024-01-01"} -->
+First line
+
+
+Last line
+
+<!-- message: {"id":"msg-2","role":"assistant","timestamp":"2024-01-01"} -->
+Response"#;
+        
+        let messages = parse_chat(content);
+        assert_eq!(messages.len(), 2);
+        assert!(messages[0].content.contains("\n\n"));
+    }
+
+    // Chat message format tests
+    #[test]
+    fn test_format_message_escaping() {
+        let message = ChatMessage {
+            id: "msg-1".to_string(),
+            role: "user".to_string(),
+            content: "Content with \"quotes\" and \\ backslash".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            attachments: None,
+            applied_mermaid: None,
+        };
+        
+        let formatted = format_message(&message).unwrap();
+        let parsed_back: Vec<ChatMessage> = parse_chat(&formatted);
+        
+        assert_eq!(parsed_back.len(), 1);
+        assert_eq!(parsed_back[0].content, message.content);
+    }
+
+    // File content roundtrip test
+    #[test]
+    fn test_chat_file_roundtrip() {
+        let temp_dir = TempDir::new().unwrap();
+        let chat_file = temp_dir.path().join("chat.md");
+        
+        let messages = vec![
+            ChatMessage {
+                id: "1".to_string(),
+                role: "user".to_string(),
+                content: "Hello".to_string(),
+                timestamp: "2024-01-01T00:00:00Z".to_string(),
+                attachments: None,
+                applied_mermaid: None,
+            },
+            ChatMessage {
+                id: "2".to_string(),
+                role: "assistant".to_string(),
+                content: "Hi there".to_string(),
+                timestamp: "2024-01-01T00:00:01Z".to_string(),
+                attachments: None,
+                applied_mermaid: None,
+            },
+        ];
+        
+        // Write messages to file
+        let mut file_content = String::new();
+        for msg in &messages {
+            file_content.push_str(&format_message(msg).unwrap());
+        }
+        fs::write(&chat_file, file_content).unwrap();
+        
+        // Read back and parse
+        let read_content = fs::read_to_string(&chat_file).unwrap();
+        let parsed = parse_chat(&read_content);
+        
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0].content, "Hello");
+        assert_eq!(parsed[1].content, "Hi there");
+    }
+
+    // Attachment metadata tests
+    #[test]
+    fn test_attachment_meta_various_sizes() {
+        let small = AttachmentMeta {
+            id: "small.txt".to_string(),
+            name: "small.txt".to_string(),
+            filename: "small.txt".to_string(),
+            size: 100,
+        };
+        
+        let large = AttachmentMeta {
+            id: "large.bin".to_string(),
+            name: "large.bin".to_string(),
+            filename: "large.bin".to_string(),
+            size: 5 * 1024 * 1024, // 5MB
+        };
+        
+        assert_eq!(small.size, 100);
+        assert_eq!(large.size, 5 * 1024 * 1024);
+    }
+
+    // AppState with layout serialization
+    #[test]
+    fn test_app_state_with_layout_roundtrip() {
+        let mut state = AppState::default();
+        state.layout = Some(LayoutState {
+            sidebar_width: Some(300.0),
+            editor_width: Some(500.0),
+        });
+        
+        let json = serde_json::to_string(&state).unwrap();
+        let deserialized: AppState = serde_json::from_str(&json).unwrap();
+        
+        assert!(deserialized.layout.is_some());
+        let layout = deserialized.layout.unwrap();
+        assert_eq!(layout.sidebar_width, Some(300.0));
+        assert_eq!(layout.editor_width, Some(500.0));
+    }
+
+    // OAuth credentials tests
+    #[test]
+    fn test_oauth_credentials_serialization() {
+        let oauth = oauth::OAuthCredentials {
+            access_token: "token123".to_string(),
+            refresh_token: "refresh456".to_string(),
+            expires_at: 1234567890123,
+            project_id: "my-project".to_string(),
+            email: Some("user@example.com".to_string()),
+        };
+        
+        let json = serde_json::to_string(&oauth).unwrap();
+        assert!(json.contains("token123"));
+        assert!(json.contains("my-project"));
+        assert!(json.contains("user@example.com"));
+        
+        let deserialized: oauth::OAuthCredentials = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.access_token, "token123");
+        assert_eq!(deserialized.expires_at, 1234567890123);
+    }
 }
