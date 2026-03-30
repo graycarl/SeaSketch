@@ -12,6 +12,9 @@ use std::process::Command;
 
 mod oauth;
 
+#[cfg(test)]
+mod lib_test;
+
 const STORE_PATH: &str = "seasketch-state.json";
 const STORE_KEY: &str = "state";
 const SETTINGS_KEY: &str = "settings";

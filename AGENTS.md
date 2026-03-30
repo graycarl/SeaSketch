@@ -31,5 +31,14 @@
 
 ## Build Verification
 在修改完代码后，按顺序执行以下命令确认编译通过：
-1. 前端构建：`npm run build`
-2. Rust 后端检查：`cd src-tauri && cargo check`
+1. **运行完整测试套件**：`npm run test:all`（推荐，验证前后端所有测试）
+2. 前端测试：`npm run test`
+3. Rust 后端测试：`npm run test:rust`
+4. 前端构建：`npm run build`
+5. Rust 后端检查：`cd src-tauri && cargo check`
+
+### 测试规范
+- **工具函数**：所有新添加的纯函数必须在 `src/utils/*.test.ts` 中编写对应测试
+- **Store 逻辑**：核心状态变更逻辑必须在 `src/store.test.ts` 中覆盖
+- **Rust 命令**：文件系统操作等可测试逻辑必须在 `src-tauri/src/lib_test.rs` 中覆盖
+- **测试失败修复**：如果测试失败，优先修复代码而非跳过或删除测试

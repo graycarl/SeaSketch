@@ -37,3 +37,6 @@ tauri-plugin-http = "2"
 arboard = "3"
 image = { version = "0.25", default-features = false, features = ["png"] }
 
+[dev-dependencies]
+tempfile = "3"
+

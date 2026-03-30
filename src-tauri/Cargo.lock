@@ -4356,6 +4356,7 @@ dependencies = [
  "tauri-plugin-http",
  "tauri-plugin-opener",
  "tauri-plugin-store",
+ "tempfile",
  "tiny_http",
  "tokio",
  "url",
