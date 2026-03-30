@@ -34,4 +34,6 @@ rand = "0.8"
 urlencoding = "2"
 chrono = "0.4"
 tauri-plugin-http = "2"
+arboard = "3"
+image = { version = "0.25", default-features = false, features = ["png"] }
 

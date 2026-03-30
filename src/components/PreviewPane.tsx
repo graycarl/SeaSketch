@@ -4,7 +4,7 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEffect, useMemo, useRef, useState, useCallback, type WheelEvent, type MouseEvent as ReactMouseEvent } from "react";
 import mermaid from "mermaid";
 import { parseFrontmatter } from "../utils/frontmatter";
-import { Sun, Moon, Copy } from "lucide-react";
+import { Sun, Moon, Copy, Image as ImageIcon } from "lucide-react";
 import { ChatPane } from "./ChatPane";
 import { invoke } from "@tauri-apps/api/core";
 import "./PreviewPane.css";
@@ -262,6 +262,119 @@ export function PreviewPane() {
     }
   }, [showToast, currentFile]);
 
+  const handleCopyPng = useCallback(async () => {
+    const svg = lastSuccessfulSvg.current;
+    if (!svg) {
+      showToast("没有可复制的 PNG", "error");
+      return;
+    }
+    try {
+      // Parse SVG to get dimensions
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svg, "image/svg+xml");
+      const svgElement = svgDoc.querySelector("svg");
+      if (!svgElement) {
+        showToast("无法解析 SVG", "error");
+        return;
+      }
+
+      // Get SVG dimensions
+      let width = parseFloat(svgElement.getAttribute("width") || "0");
+      let height = parseFloat(svgElement.getAttribute("height") || "0");
+      
+      // If no width/height, try viewBox
+      if (!width || !height) {
+        const viewBox = svgElement.viewBox.baseVal;
+        if (viewBox && viewBox.width && viewBox.height) {
+          width = viewBox.width;
+          height = viewBox.height;
+        }
+      }
+      
+      if (!width || !height) {
+        showToast("无法获取 SVG 尺寸", "error");
+        return;
+      }
+
+      // Ensure integer dimensions for canvas
+      const canvasWidth = Math.ceil(width);
+      const canvasHeight = Math.ceil(height);
+
+      // Create canvas
+      const canvas = document.createElement("canvas");
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        showToast("无法创建 Canvas", "error");
+        return;
+      }
+
+      // Fill background based on current preview background
+      const bgColor = bg === "dark" ? "#1e1e1e" : "#ffffff";
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+      // Clone the SVG element to modify it
+      const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
+      
+      // Ensure xmlns is set
+      if (!clonedSvg.getAttribute('xmlns')) {
+        clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      }
+      
+      // Set explicit width and height
+      clonedSvg.setAttribute('width', String(width));
+      clonedSvg.setAttribute('height', String(height));
+      
+      // Serialize to string
+      const serializer = new XMLSerializer();
+      let svgString = serializer.serializeToString(clonedSvg);
+      
+      // Add XML declaration
+      svgString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' + svgString;
+
+      // Create image from SVG using base64 data URL (more reliable than blob URL)
+      const svgBase64 = btoa(unescape(encodeURIComponent(svgString)));
+      const dataUrl = `data:image/svg+xml;base64,${svgBase64}`;
+      
+      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+          resolve();
+        };
+        img.onerror = (e) => {
+          console.error("Image load error:", e);
+          reject(new Error("Failed to load SVG image"));
+        };
+        img.src = dataUrl;
+      });
+
+      // Convert to PNG blob
+      const pngBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Failed to create PNG blob"));
+          }
+        }, "image/png");
+      });
+
+      // Convert blob to array buffer for Tauri
+      const arrayBuffer = await pngBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+
+      // Send to Rust to write to clipboard
+      await invoke("write_blob_to_clipboard", { blob: Array.from(uint8Array) });
+      showToast("PNG 已复制到剪贴板");
+    } catch (err) {
+      console.error("Copy PNG failed", err);
+      showToast("复制 PNG 失败", "error");
+    }
+  }, [showToast, bg]);
+
   if (!currentFile) {
     return (
       <div className="preview-pane empty">
@@ -276,6 +389,9 @@ export function PreviewPane() {
         <h2>Preview</h2>
         <button className="preview-copy-button" onClick={handleCopySvg} title="Copy SVG">
           <Copy size={14} />
+        </button>
+        <button className="preview-copy-button" onClick={handleCopyPng} title="Copy PNG">
+          <ImageIcon size={14} />
         </button>
         {error && <span className="error-text">{error}</span>}
       </div>

@@ -510,6 +510,65 @@ set the clipboard to theClipboard"#,
     }
 }
 
+#[tauri::command]
+async fn write_blob_to_clipboard(blob: Vec<u8>) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        
+        // Save PNG to temp file
+        let temp_dir = std::env::temp_dir();
+        let png_path = temp_dir.join("seasketch_copy.png");
+        fs::write(&png_path, &blob).map_err(|e| format!("Failed to write temp file: {}", e))?;
+        
+        let path_str = png_path.to_string_lossy().to_string();
+        
+        // Use simple file reference copy first (works in many apps)
+        let script1 = format!(
+            r#"set theFile to POSIX file "{}"
+set the clipboard to theFile"#,
+            path_str.replace("\"", "\\\"")
+        );
+        
+        let _ = Command::new("osascript")
+            .args(["-e", &script1])
+            .output();
+        
+        // Also try to set PNG data directly for apps that support it
+        let script2 = format!(
+            r#"try
+    set pngData to read file "{}" as «class PNGf»
+    set the clipboard to pngData
+end try"#,
+            path_str.replace("\"", "\\\"")
+        );
+        
+        let output2 = Command::new("osascript")
+            .args(["-e", &script2])
+            .output();
+        
+        // Return success if at least one method worked
+        match output2 {
+            Ok(out) if out.status.success() => Ok(()),
+            _ => {
+                // Try file reference method
+                let output1 = Command::new("osascript")
+                    .args(["-e", &script1])
+                    .output();
+                match output1 {
+                    Ok(out) if out.status.success() => Ok(()),
+                    _ => Err("Failed to copy PNG to clipboard".to_string()),
+                }
+            }
+        }
+    }
+    
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("Copy PNG to clipboard is only supported on macOS".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -545,7 +604,8 @@ pub fn run() {
             read_attachment,
             start_gemini_oauth,
             refresh_gemini_token,
-            copy_svg_to_clipboard
+            copy_svg_to_clipboard,
+            write_blob_to_clipboard
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
