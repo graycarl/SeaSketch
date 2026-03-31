@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act } from '@testing-library/react'
 import { requestMermaidUpdate, type OpenAIRequestPayload } from './openai'
 
 // Helper to create valid mock response

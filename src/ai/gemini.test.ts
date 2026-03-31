@@ -15,6 +15,44 @@ vi.mock('@tauri-apps/plugin-http', () => ({
 const mockFetch = vi.mocked(fetch)
 const mockInvoke = vi.mocked(invoke)
 
+type MockFetchInit = {
+  headers?: HeadersInit
+  body?: BodyInit | null
+}
+
+const getFetchInit = (callIndex = 0): MockFetchInit => {
+  const init = mockFetch.mock.calls[callIndex]?.[1]
+  if (!init) {
+    throw new Error(`Expected fetch call at index ${callIndex}`)
+  }
+  return init as MockFetchInit
+}
+
+const normalizeHeaders = (headers?: HeadersInit): Record<string, string> => {
+  if (!headers) {
+    return {}
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers)
+  }
+  if (typeof Headers !== 'undefined' && headers instanceof Headers) {
+    return Object.fromEntries(headers.entries())
+  }
+  return headers as Record<string, string>
+}
+
+const getHeaders = (callIndex = 0): Record<string, string> => {
+  return normalizeHeaders(getFetchInit(callIndex).headers)
+}
+
+const getJsonRequestBody = <T = unknown>(callIndex = 0): T => {
+  const body = getFetchInit(callIndex).body
+  if (typeof body !== 'string') {
+    throw new Error('Expected fetch body to be a JSON string')
+  }
+  return JSON.parse(body) as T
+}
+
 // Helper to create valid mock response
 const createMockResponse = (overrides: Partial<{ assistantMessage: string; mermaid: string; noChange?: boolean }> = {}) => ({
   candidates: [{
@@ -143,7 +181,8 @@ data: {"response":{"candidates":[{"content":{"parts":[{"text":""}],"role":"model
     })
     
     // Verify new token was used in request
-    expect(mockFetch.mock.calls[0][1].headers.Authorization).toBe(`Bearer ${newToken}`)
+    const refreshedHeaders = getHeaders()
+    expect(refreshedHeaders.Authorization).toBe(`Bearer ${newToken}`)
     
     // Verify callback was called
     expect(onTokenRefreshed).toHaveBeenCalled()
@@ -186,7 +225,8 @@ data: {"response":{"candidates":[{"content":{"parts":[{"text":""}],"role":"model
     expect(mockInvoke).not.toHaveBeenCalled()
     
     // Verify existing token was used
-    expect(mockFetch.mock.calls[0][1].headers.Authorization).toBe('Bearer valid-token')
+    const headers = getHeaders()
+    expect(headers.Authorization).toBe('Bearer valid-token')
   })
 
   it('should use OAuth endpoint when OAuth credentials are provided', async () => {
@@ -241,7 +281,7 @@ data: {"response":{"candidates":[{"content":{"parts":[{"text":""}],"role":"model
 
     await requestMermaidUpdate(payload)
 
-    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const requestBody = getJsonRequestBody<{ contents: Array<{ parts: Array<{ text: string }> }> }>(0)
     const contentText = requestBody.contents[0].parts[0].text
     expect(contentText).toContain('data.txt')
     expect(contentText).toContain('attachment content')
@@ -309,7 +349,7 @@ data: {"response":{"candidates":[{"content":{"parts":[{"text":""}],"role":"model
 
     await requestMermaidUpdate(payload)
 
-    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const requestBody = getJsonRequestBody<{ contents: Array<{ parts: Array<{ text: string }> }> }>(0)
     const contentText = requestBody.contents[0].parts[0].text
     expect(contentText).toContain('user: Hello')
     expect(contentText).toContain('assistant: Hi there')
@@ -349,7 +389,7 @@ data: {"response":{"candidates":[{"content":{"parts":[{"text":""}],"role":"model
 
     await requestMermaidUpdate(createPayload())
 
-    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const requestBody = getJsonRequestBody<{ generationConfig: { temperature: number } }>(0)
     expect(requestBody.generationConfig.temperature).toBe(0.2)
   })
 
@@ -397,8 +437,8 @@ data: {"response":{"candidates":[{"content":{"parts":[{"text":""}],"role":"model
 
     await requestMermaidUpdate(createPayload())
 
-    const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+    const requestBody = getJsonRequestBody<{ systemInstruction?: { parts: Array<{ text: string }> } }>(0)
     expect(requestBody.systemInstruction).toBeDefined()
-    expect(requestBody.systemInstruction.parts[0].text).toContain('Mermaid diagram assistant')
+    expect(requestBody.systemInstruction?.parts?.[0]?.text ?? '').toContain('Mermaid diagram assistant')
   })
 })
