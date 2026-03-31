@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Camera } from "lucide-react";
 import { useSeaSketchStore } from "../store";
 import { samplesFolder, SAMPLES_FOLDER_ID } from "../samples";
 import { CodeEditor } from "./CodeEditor";
@@ -154,8 +155,9 @@ export function EditorPane() {
               className="editor-snapshot-btn"
               type="button"
               onClick={handleCreateSnapshot}
+              title="创建快照"
             >
-              创建快照
+              <Camera size={14} />
             </button>
           )}
           {!isSnapshotInputOpen && (
