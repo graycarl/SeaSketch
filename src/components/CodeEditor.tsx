@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Transaction } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { mermaid } from "codemirror-lang-mermaid";
 import { linter, Diagnostic } from "@codemirror/lint";
@@ -58,7 +58,8 @@ export function CodeEditor({ value, onChange }: CodeEditorProps) {
         oneDark,
         mermaid(),
         lintMermaid,
-        keymap.of([indentWithTab, ...defaultKeymap]),
+        history(),
+        keymap.of([indentWithTab, ...historyKeymap, ...defaultKeymap]),
         EditorView.lineWrapping,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -100,6 +101,7 @@ export function CodeEditor({ value, onChange }: CodeEditorProps) {
     if (value !== currentValue) {
       view.dispatch({
         changes: { from: 0, to: currentValue.length, insert: value },
+        annotations: Transaction.addToHistory.of(false),
       });
     }
   }, [value]);
