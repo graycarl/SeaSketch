@@ -29,9 +29,26 @@ body {
 .app-shell {
   width: 100%;
   height: 100%;
-  display: flex;
   background: #0f1117;
   position: relative;
+}
+
+.app-layout,
+.preview-fullscreen-layer {
+  width: 100%;
+  height: 100%;
+}
+
+.app-layout {
+  display: flex;
+}
+
+.preview-fullscreen-layer {
+  display: flex;
+}
+
+.layout-fade-transition {
+  animation: layout-fade-in 0.2s ease;
 }
 
 .pane-resizer {
@@ -81,6 +98,17 @@ body.is-resizing {
   border: 3px solid rgba(79, 126, 248, 0.2);
   border-top-color: #4f7ef8;
   animation: spin 1s linear infinite;
+}
+
+@keyframes layout-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes spin {

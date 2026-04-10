@@ -4,14 +4,19 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEffect, useMemo, useRef, useState, useCallback, type WheelEvent, type MouseEvent as ReactMouseEvent } from "react";
 import mermaid from "mermaid";
 import { parseFrontmatter } from "../utils/frontmatter";
-import { Sun, Moon, Copy, Image as ImageIcon } from "lucide-react";
+import { Sun, Moon, Copy, Image as ImageIcon, Maximize2, Minimize2 } from "lucide-react";
 import { ChatPane } from "./ChatPane";
 import { invoke } from "@tauri-apps/api/core";
 import "./PreviewPane.css";
 
 mermaid.initialize({ startOnLoad: false, theme: "dark", suppressErrorRendering: true });
 
-export function PreviewPane() {
+interface PreviewPaneProps {
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+}
+
+export function PreviewPane({ isFullscreen = false, onToggleFullscreen }: PreviewPaneProps) {
   const { folders, currentFolderId, currentFileId, sampleContents, sampleBackgrounds, togglePreviewBackground, setPreviewSnapshot, showToast, toast } = useSeaSketchStore();
 
   const isSamples = currentFolderId === SAMPLES_FOLDER_ID;
@@ -46,6 +51,7 @@ export function PreviewPane() {
   const translateRef = useRef({ x: 0, y: 0 });
   const pendingTransformRef = useRef({ scale: 1, translate: { x: 0, y: 0 } });
   const rafRef = useRef<number | null>(null);
+  const renderRequestIdRef = useRef(0);
 
   const MIN_SCALE = 0.25;
   const MAX_SCALE = 5;
@@ -110,16 +116,22 @@ export function PreviewPane() {
   }, [applyTransform, clampScale]);
 
   useEffect(() => {
+    let isCancelled = false;
+
     if (!currentFile) {
       setError(null);
       lastSuccessfulSvg.current = "";
       setPreviewSnapshot({ svg: "", error: null });
       if (svgRef.current) svgRef.current.innerHTML = "";
       applyTransform(1, { x: 0, y: 0 });
-      return;
+      return () => {
+        isCancelled = true;
+      };
     }
 
     const renderDiagram = async () => {
+      const requestId = ++renderRequestIdRef.current;
+
       try {
         // Extract frontmatter config and build the render content
         const { config, body } = parseFrontmatter(debouncedContent);
@@ -132,7 +144,13 @@ export function PreviewPane() {
           : "";
         const renderContent = initDirective + body;
 
-        const { svg } = await mermaid.render(`diagram-${currentFile.id}`, renderContent);
+        const renderId = `diagram-${currentFile.id}-${requestId}`;
+        const { svg } = await mermaid.render(renderId, renderContent);
+
+        if (isCancelled || requestId !== renderRequestIdRef.current) {
+          return;
+        }
+
         lastSuccessfulSvg.current = svg;
         if (svgRef.current) {
           svgRef.current.innerHTML = svg;
@@ -148,6 +166,10 @@ export function PreviewPane() {
         setError(null);
         setPreviewSnapshot({ svg, error: null });
       } catch (err) {
+        if (isCancelled || requestId !== renderRequestIdRef.current) {
+          return;
+        }
+
         console.error("Mermaid render error", err);
         const errorMessage = (err as Error).message;
         setError(errorMessage);
@@ -170,10 +192,14 @@ export function PreviewPane() {
       renderDiagram();
     } else {
       if (svgRef.current) svgRef.current.innerHTML = "";
-      setError("Diagram is empty");
-      setPreviewSnapshot({ svg: "", error: "Diagram is empty" });
+      setError(null);
+      setPreviewSnapshot({ svg: "", error: null });
       applyTransform(1, { x: 0, y: 0 });
     }
+
+    return () => {
+      isCancelled = true;
+    };
   }, [applyTransform, currentFile, debouncedContent, setPreviewSnapshot, fitToWidth]);
 
   const handleWheel = useCallback(
@@ -375,20 +401,25 @@ export function PreviewPane() {
     }
   }, [showToast, bg]);
 
-  if (!currentFile) {
-    return (
-      <div className="preview-pane empty">
-        <p>No diagram selected</p>
-      </div>
-    );
-  }
+  const hasSelectedFile = Boolean(currentFile);
+  const isContentEmpty = !debouncedContent.trim();
+  const showEmptyState = !hasSelectedFile || isContentEmpty;
 
   return (
-    <div className="preview-pane">
-      <div className="preview-header">
-        <h2>Preview</h2>
-        {error && <span className="error-text">{error}</span>}
+    <div className={`preview-pane${isFullscreen ? " fullscreen" : ""}`}>
+      <div className={`preview-header${isFullscreen ? " slim" : ""}`}>
+        <h2>{isFullscreen ? "Preview 全窗口" : "Preview"}</h2>
+        {error && !isFullscreen && <span className="error-text">渲染失败</span>}
         <div className="preview-copy-buttons">
+          {onToggleFullscreen && (
+            <button
+              className="preview-copy-button preview-mode-toggle"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? "退出全窗口" : "全窗口预览"}
+            >
+              {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+          )}
           <button className="preview-copy-button" onClick={handleCopySvg} title="Copy SVG">
             <Copy size={14} />
           </button>
@@ -400,8 +431,8 @@ export function PreviewPane() {
       <div
         className={`preview-content bg-${bg}${isDragging ? " dragging" : ""}`}
         ref={viewportRef}
-        onWheelCapture={handleWheel}
-        onMouseDown={handleMouseDown}
+        onWheelCapture={showEmptyState ? undefined : handleWheel}
+        onMouseDown={showEmptyState ? undefined : handleMouseDown}
       >
         <div
           className="preview-transform"
@@ -409,19 +440,36 @@ export function PreviewPane() {
         >
           <div className="preview-svg" ref={svgRef} />
         </div>
-        <div className="preview-zoom-indicator">
-          <span>{Math.round(scale * 100)}%</span>
-          <button className="preview-fit-button" onClick={fitToWidth} title="Fit to width">适配宽度</button>
-        </div>
-        <button
-          className="preview-bg-toggle"
-          onClick={togglePreviewBackground}
-          title={bg === "dark" ? "Switch to light background" : "Switch to dark background"}
-        >
-          {bg === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-        </button>
+
+        {showEmptyState && (
+          <div className="preview-empty-state">
+            <p>暂无可预览内容</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="preview-error-overlay">
+            <p>渲染失败：{error}</p>
+          </div>
+        )}
+
+        {!showEmptyState && (
+          <>
+            <div className="preview-zoom-indicator">
+              <span>{Math.round(scale * 100)}%</span>
+              <button className="preview-fit-button" onClick={fitToWidth} title="Fit to width">适配宽度</button>
+            </div>
+            <button
+              className="preview-bg-toggle"
+              onClick={togglePreviewBackground}
+              title={bg === "dark" ? "Switch to light background" : "Switch to dark background"}
+            >
+              {bg === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+          </>
+        )}
       </div>
-      <ChatPane />
+      {!isFullscreen && <ChatPane />}
       {toast.visible && <div className={`toast ${toast.type}`}>{toast.message}</div>}
     </div>
   );

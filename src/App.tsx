@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { EditorPane } from "./components/EditorPane";
@@ -16,6 +16,7 @@ const DEFAULT_EDITOR_WIDTH = 416;
 
 function App() {
   const { loadState, isLoading, layout, updateLayout, openSettings } = useSeaSketchStore();
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{
     type: "sidebar" | "preview" | null;
@@ -125,21 +126,34 @@ function App() {
 
   return (
     <div className="app-shell" ref={shellRef} style={shellStyle}>
-      <Sidebar />
-      <div
-        className="pane-resizer"
-        role="separator"
-        aria-orientation="vertical"
-        onMouseDown={(event) => handleStartResize("sidebar", event)}
-      />
-      <EditorPane />
-      <div
-        className="pane-resizer"
-        role="separator"
-        aria-orientation="vertical"
-        onMouseDown={(event) => handleStartResize("preview", event)}
-      />
-      <PreviewPane />
+      {isPreviewFullscreen ? (
+        <div className="preview-fullscreen-layer layout-fade-transition">
+          <PreviewPane
+            isFullscreen
+            onToggleFullscreen={() => setIsPreviewFullscreen(false)}
+          />
+        </div>
+      ) : (
+        <div className="app-layout layout-fade-transition">
+          <Sidebar />
+          <div
+            className="pane-resizer"
+            role="separator"
+            aria-orientation="vertical"
+            onMouseDown={(event) => handleStartResize("sidebar", event)}
+          />
+          <EditorPane />
+          <div
+            className="pane-resizer"
+            role="separator"
+            aria-orientation="vertical"
+            onMouseDown={(event) => handleStartResize("preview", event)}
+          />
+          <PreviewPane
+            onToggleFullscreen={() => setIsPreviewFullscreen(true)}
+          />
+        </div>
+      )}
       <SettingsModal />
     </div>
   );
