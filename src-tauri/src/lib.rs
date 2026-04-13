@@ -514,14 +514,14 @@ set the clipboard to theClipboard"#,
 }
 
 #[tauri::command]
-async fn write_blob_to_clipboard(blob: Vec<u8>) -> Result<(), String> {
+async fn write_blob_to_clipboard(blob: Vec<u8>, filename: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         use std::process::Command;
         
         // Save PNG to temp file
         let temp_dir = std::env::temp_dir();
-        let png_path = temp_dir.join("seasketch_copy.png");
+        let png_path = temp_dir.join(filename);
         fs::write(&png_path, &blob).map_err(|e| format!("Failed to write temp file: {}", e))?;
         
         let path_str = png_path.to_string_lossy().to_string();

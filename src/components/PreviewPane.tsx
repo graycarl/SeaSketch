@@ -4,6 +4,7 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useEffect, useMemo, useRef, useState, useCallback, type WheelEvent, type MouseEvent as ReactMouseEvent } from "react";
 import mermaid from "mermaid";
 import { parseFrontmatter } from "../utils/frontmatter";
+import { sanitizeFilenameStem } from "../utils/filename";
 import { Sun, Moon, Copy, Image as ImageIcon, Maximize2, Minimize2 } from "lucide-react";
 import { ChatPane } from "./ChatPane";
 import { invoke } from "@tauri-apps/api/core";
@@ -276,10 +277,23 @@ export function PreviewPane({ isFullscreen = false, onToggleFullscreen }: Previe
       return;
     }
     try {
-      // Add XML declaration to make it a valid SVG file
-      const svgWithDeclaration = `<?xml version="1.0" encoding="UTF-8"?>\n${svg}`;
-      // Generate filename from current file name
-      const filename = `${currentFile?.name.replace(/\.md$/, "") || "diagram"}.svg`;
+      const renderedSvg = svgRef.current?.querySelector("svg");
+      if (!renderedSvg) {
+        showToast("无法获取当前 SVG", "error");
+        return;
+      }
+
+      const clonedSvg = renderedSvg.cloneNode(true) as SVGSVGElement;
+      if (!clonedSvg.getAttribute("xmlns")) {
+        clonedSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      }
+
+      const serializer = new XMLSerializer();
+      const serialized = serializer.serializeToString(clonedSvg);
+      const svgWithDeclaration = `<?xml version="1.0" encoding="UTF-8"?>\n${serialized}`;
+
+      const baseName = sanitizeFilenameStem(currentFile?.name.replace(/\.md$/, "") || "diagram");
+      const filename = `${baseName}.svg`;
       await invoke("copy_svg_to_clipboard", { svgContent: svgWithDeclaration, filename });
       showToast("SVG 已复制到剪贴板");
     } catch (err) {
@@ -295,38 +309,40 @@ export function PreviewPane({ isFullscreen = false, onToggleFullscreen }: Previe
       return;
     }
     try {
-      // Parse SVG to get dimensions
-      const parser = new DOMParser();
-      const svgDoc = parser.parseFromString(svg, "image/svg+xml");
-      const svgElement = svgDoc.querySelector("svg");
-      if (!svgElement) {
-        showToast("无法解析 SVG", "error");
+      const renderedSvg = svgRef.current?.querySelector("svg") as SVGSVGElement | null;
+      if (!renderedSvg) {
+        showToast("无法获取当前 SVG", "error");
         return;
       }
 
-      // Get SVG dimensions
-      let width = parseFloat(svgElement.getAttribute("width") || "0");
-      let height = parseFloat(svgElement.getAttribute("height") || "0");
-      
-      // If no width/height, try viewBox
+      // Get SVG dimensions from rendered DOM first
+      let width = parseFloat(renderedSvg.getAttribute("width") || "0");
+      let height = parseFloat(renderedSvg.getAttribute("height") || "0");
+
       if (!width || !height) {
-        const viewBox = svgElement.viewBox.baseVal;
-        if (viewBox && viewBox.width && viewBox.height) {
+        const viewBox = renderedSvg.viewBox?.baseVal;
+        if (viewBox?.width && viewBox?.height) {
           width = viewBox.width;
           height = viewBox.height;
         }
       }
-      
+
+      if (!width || !height) {
+        const rect = renderedSvg.getBoundingClientRect();
+        if (rect.width && rect.height) {
+          width = rect.width;
+          height = rect.height;
+        }
+      }
+
       if (!width || !height) {
         showToast("无法获取 SVG 尺寸", "error");
         return;
       }
 
-      // Ensure integer dimensions for canvas
       const canvasWidth = Math.ceil(width);
       const canvasHeight = Math.ceil(height);
 
-      // Create canvas
       const canvas = document.createElement("canvas");
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
@@ -336,34 +352,25 @@ export function PreviewPane({ isFullscreen = false, onToggleFullscreen }: Previe
         return;
       }
 
-      // Fill background based on current preview background
       const bgColor = bg === "dark" ? "#1e1e1e" : "#ffffff";
       ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-      // Clone the SVG element to modify it
-      const clonedSvg = svgElement.cloneNode(true) as SVGSVGElement;
-      
-      // Ensure xmlns is set
-      if (!clonedSvg.getAttribute('xmlns')) {
-        clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      // Clone rendered SVG and serialize from DOM to avoid invalid raw SVG markup
+      const clonedSvg = renderedSvg.cloneNode(true) as SVGSVGElement;
+      if (!clonedSvg.getAttribute("xmlns")) {
+        clonedSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       }
-      
-      // Set explicit width and height
-      clonedSvg.setAttribute('width', String(width));
-      clonedSvg.setAttribute('height', String(height));
-      
-      // Serialize to string
+      clonedSvg.setAttribute("width", String(width));
+      clonedSvg.setAttribute("height", String(height));
+
       const serializer = new XMLSerializer();
       let svgString = serializer.serializeToString(clonedSvg);
-      
-      // Add XML declaration
       svgString = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n' + svgString;
 
-      // Create image from SVG using base64 data URL (more reliable than blob URL)
       const svgBase64 = btoa(unescape(encodeURIComponent(svgString)));
       const dataUrl = `data:image/svg+xml;base64,${svgBase64}`;
-      
+
       await new Promise<void>((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
@@ -377,7 +384,6 @@ export function PreviewPane({ isFullscreen = false, onToggleFullscreen }: Previe
         img.src = dataUrl;
       });
 
-      // Convert to PNG blob
       const pngBlob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob((blob) => {
           if (blob) {
@@ -388,18 +394,18 @@ export function PreviewPane({ isFullscreen = false, onToggleFullscreen }: Previe
         }, "image/png");
       });
 
-      // Convert blob to array buffer for Tauri
       const arrayBuffer = await pngBlob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
-      // Send to Rust to write to clipboard
-      await invoke("write_blob_to_clipboard", { blob: Array.from(uint8Array) });
+      const baseName = sanitizeFilenameStem(currentFile?.name.replace(/\.md$/, "") || "diagram");
+      const filename = `${baseName}.png`;
+      await invoke("write_blob_to_clipboard", { blob: Array.from(uint8Array), filename });
       showToast("PNG 已复制到剪贴板");
     } catch (err) {
       console.error("Copy PNG failed", err);
       showToast("复制 PNG 失败", "error");
     }
-  }, [showToast, bg]);
+  }, [showToast, bg, currentFile]);
 
   const hasSelectedFile = Boolean(currentFile);
   const isContentEmpty = !debouncedContent.trim();
