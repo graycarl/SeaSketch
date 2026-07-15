@@ -1,11 +1,13 @@
 import { useEffect, useRef } from "react";
 import { EditorState, Transaction } from "@codemirror/state";
-import { EditorView, keymap, lineNumbers } from "@codemirror/view";
+import { EditorView, keymap, lineNumbers, ViewPlugin, ViewUpdate } from "@codemirror/view";
+import { search, searchKeymap, setSearchQuery } from "@codemirror/search";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { mermaid } from "codemirror-lang-mermaid";
 import { linter, Diagnostic } from "@codemirror/lint";
 import mermaidApi from "mermaid";
+import "./CodeEditor.css";
 
 const lintMermaid = linter(async (view) => {
   const text = view.state.doc.toString();
@@ -39,6 +41,41 @@ const lintMermaid = linter(async (view) => {
   }
 }, { delay: 500 });
 
+const autoFindFirstMatch = ViewPlugin.fromClass(
+  class {
+    private lastSearch = "";
+
+    update(update: ViewUpdate) {
+      for (const tr of update.transactions) {
+        for (const effect of tr.effects) {
+          if (effect.is(setSearchQuery)) {
+            const query = effect.value;
+            if (!query.valid || !query.search || query.search === this.lastSearch) {
+              continue;
+            }
+            this.lastSearch = query.search;
+
+            // Defer until after the search highlighter has updated with the new query.
+            setTimeout(() => {
+              const view = update.view;
+              if (!view.dom.isConnected) return;
+
+              const cursor = query.getCursor(view.state.doc);
+              const match = cursor.next();
+              if (!match.done) {
+                view.dispatch({
+                  selection: { anchor: match.value.from, head: match.value.to },
+                  scrollIntoView: true,
+                });
+              }
+            }, 0);
+          }
+        }
+      }
+    }
+  }
+);
+
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -59,7 +96,9 @@ export function CodeEditor({ value, onChange }: CodeEditorProps) {
         mermaid(),
         lintMermaid,
         history(),
-        keymap.of([indentWithTab, ...historyKeymap, ...defaultKeymap]),
+        search({ top: true }),
+        autoFindFirstMatch,
+        keymap.of([indentWithTab, ...historyKeymap, ...defaultKeymap, ...searchKeymap]),
         EditorView.lineWrapping,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
