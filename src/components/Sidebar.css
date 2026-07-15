@@ -173,6 +173,10 @@
 }
 
 .snapshot-toggle {
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -184,7 +188,6 @@
   cursor: pointer;
   padding: 0;
   border-radius: 3px;
-  flex-shrink: 0;
 }
 
 .snapshot-toggle:hover {
