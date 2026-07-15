@@ -12,36 +12,66 @@ const sampleFiles: FileNode[] = [
   sample(
     "flowchart",
     "Flowchart",
-    `flowchart TD
-    A[Start] --> B{Is it working?}
-    B -- Yes --> C[Great!]
-    B -- No --> D[Debug]
-    D --> E[Fix the issue]
-    E --> B
-    C --> F[Deploy]
-    F --> G[End]`,
+    `flowchart LR
+    A([Start]) --> B{Is request valid?}
+
+    subgraph MainFlow
+      direction TB
+      B -- Yes --> C[Process data]
+      C --> D[(Database)]
+      D --> E[Build response]
+    end
+
+    subgraph ErrorFlow
+      direction TB
+      B -- No --> X[Return 400]
+      X -. log .-> L[Write error log]
+    end
+
+    E --> F((End))
+
+    classDef error fill:#ffe6e6,stroke:#d33,stroke-width:2px;
+    classDef ok fill:#e8fff0,stroke:#2b8a3e,stroke-width:2px;
+    class X,L error
+    class F ok`,
   ),
 
   sample(
     "sequence",
     "Sequence Diagram",
     `sequenceDiagram
+    autonumber
     participant User
     participant Browser
     participant Server
     participant DB
 
     User->>Browser: Enter URL
-    Browser->>Server: GET /page
-    Server->>DB: SELECT data
-    DB-->>Server: Return rows
-    Server-->>Browser: HTML response
+    Browser->>+Server: GET /page
+    Server->>+DB: SELECT data
+    DB-->>-Server: rows
+    Server-->>-Browser: HTML
     Browser-->>User: Render page
 
     alt Login required
+        Note over Browser,Server: Session cookie required
         User->>Browser: Submit credentials
-        Browser->>Server: POST /login
-        Server-->>Browser: Set cookie
+        Browser->>+Server: POST /login
+        Server-->>-Browser: Set-Cookie
+    else Already authenticated
+        Browser->>Server: GET /page (with cookie)
+        Server-->>Browser: 200 OK
+    end
+
+    par Metrics
+        Browser->>Server: POST /metrics
+    and Prefetch
+        Browser->>Server: GET /api/recommendations
+    end
+
+    loop Every 30s
+        Browser->>Server: Poll notifications
+        Server-->>Browser: Notification list
     end`,
   ),
 
@@ -54,107 +84,181 @@ const sampleFiles: FileNode[] = [
         +int age
         +makeSound() void
     }
+
     class Dog {
         +String breed
         +fetch() void
     }
+
     class Cat {
         +bool isIndoor
         +purr() void
     }
+
     class Owner {
+        -String id
         +String name
-        +List~Animal~ pets
+        #List~Animal~ pets
         +adopt(Animal a) void
+        +findPetNames() List~String~
+    }
+
+    class Repository~T~ {
+        +save(T entity) void
+        +findById(String id) T
     }
 
     Animal <|-- Dog : extends
     Animal <|-- Cat : extends
-    Owner "1" o-- "many" Animal : owns`,
+    Owner "1" o-- "0..*" Animal : owns
+    Owner ..> Repository~Animal~ : uses`,
   ),
 
   sample(
     "state",
     "State Diagram",
     `stateDiagram-v2
+    direction LR
     [*] --> Idle
 
     Idle --> Loading : fetch()
-    Loading --> Success : data received
-    Loading --> Error : request failed
 
-    Success --> Idle : reset()
+    state Loading {
+        [*] --> Requesting
+        Requesting --> Validating : response arrived
+        Validating --> Parsing : schema ok
+        Validating --> BadData : schema invalid
+        Parsing --> [*]
+    }
+
+    Loading --> Decision : parsed
+    Loading --> Error : timeout/network
+
+    state Decision <<choice>>
+    Decision --> Success : data ready
+    Decision --> Error : business rule failed
+
+    state Fork <<fork>>
+    state Join <<join>>
+
+    Success --> Fork : postProcess()
+    Fork --> CacheWrite
+    Fork --> Analytics
+    CacheWrite --> Join
+    Analytics --> Join
+    Join --> Idle : ready for next request
+
     Error --> Idle : reset()
-    Error --> Loading : retry()
-
-    Success --> [*] : done`,
+    Error --> Loading : retry()`,
   ),
 
   sample(
     "er",
     "Entity Relationship",
     `erDiagram
-    USER {
-        int id PK
-        string name
-        string email
-        datetime created_at
-    }
-    ORDER {
-        int id PK
-        int user_id FK
-        float total
-        string status
-        datetime placed_at
-    }
-    PRODUCT {
-        int id PK
-        string name
-        float price
-        int stock
-    }
-    ORDER_ITEM {
-        int order_id FK
-        int product_id FK
-        int quantity
-        float unit_price
+    CUSTOMER ||--o{ ORDER : places
+    CUSTOMER ||--o{ INVOICE : "liable for"
+    CUSTOMER }|..|{ DELIVERY_ADDRESS : uses
+    ORDER ||--|{ ORDER_ITEM : contains
+    PRODUCT ||--o{ ORDER_ITEM : "ordered in"
+    PRODUCT_CATEGORY ||--|{ PRODUCT : contains
+    INVOICE ||--|{ ORDER : covers
+
+    CUSTOMER {
+      int id PK
+      string name
+      string email
+      datetime created_at
     }
 
-    USER ||--o{ ORDER : places
-    ORDER ||--|{ ORDER_ITEM : contains
-    PRODUCT ||--o{ ORDER_ITEM : "included in"`,
+    DELIVERY_ADDRESS {
+      int id PK
+      int customer_id FK
+      string country
+      string city
+      string detail
+      string postal_code
+    }
+
+    ORDER {
+      int id PK
+      int customer_id FK
+      int delivery_address_id FK
+      string status
+      float total_amount
+      datetime placed_at
+    }
+
+    INVOICE {
+      int id PK
+      int customer_id FK
+      int order_id FK
+      string invoice_no
+      datetime issued_at
+    }
+
+    PRODUCT_CATEGORY {
+      int id PK
+      string name
+      int parent_id FK
+    }
+
+    PRODUCT {
+      int id PK
+      int category_id FK
+      string name
+      float price
+      int stock
+    }
+
+    ORDER_ITEM {
+      int order_id PK, FK
+      int product_id PK, FK
+      int quantity
+      float unit_price
+    }`,
   ),
 
   sample(
     "gantt",
     "Gantt Chart",
     `gantt
-    title Project Roadmap
-    dateFormat  YYYY-MM-DD
+    title SeaSketch Release Plan
+    dateFormat YYYY-MM-DD
+    axisFormat %m/%d
+    tickInterval 1week
+    excludes weekends
+
     section Planning
-        Requirements gathering   :done,    p1, 2024-01-01, 2024-01-07
-        System design            :done,    p2, 2024-01-08, 2024-01-14
+    Requirements            :done, req, 2026-04-01, 5d
+    Architecture review     :done, arch, after req, 3d
+    MVP freeze              :milestone, m1, after arch, 0d
+
     section Development
-        Backend API              :active,  d1, 2024-01-15, 2024-02-05
-        Frontend UI              :         d2, 2024-01-22, 2024-02-10
-        Database migration       :         d3, 2024-02-01, 2024-02-07
+    Core state & storage    :crit, active, core, after m1, 8d
+    Mermaid render optimize :crit, render, after core, 6d
+    File tree UX            :ui, after core, 5d
+    AI assistant integration:ai, after render, 4d
+
     section Testing
-        Unit tests               :         t1, 2024-02-08, 2024-02-15
-        Integration tests        :         t2, 2024-02-16, 2024-02-22
+    Unit tests              :crit, test1, after render, 4d
+    Integration tests       :crit, test2, after test1, 4d
+
     section Release
-        Deploy to staging        :         r1, 2024-02-23, 2024-02-25
-        Production release       :         r2, 2024-02-26, 2024-02-28`,
+    Staging verification    :pre, after test2, 2d
+    GA Release              :milestone, rel, after pre, 0d`,
   ),
 
   sample(
     "pie",
     "Pie Chart",
-    `pie title Browser Market Share 2024
-    "Chrome"    : 65.4
-    "Safari"    : 18.7
-    "Firefox"   : 3.1
-    "Edge"      : 5.2
-    "Others"    : 7.6`,
+    `pie showData
+    title Browser Market Share 2024
+    "Chrome" : 65.4
+    "Safari" : 18.7
+    "Firefox" : 3.1
+    "Edge" : 5.2
+    "Others" : 7.6`,
   ),
 
   sample(
@@ -162,16 +266,16 @@ const sampleFiles: FileNode[] = [
     "Mindmap",
     `mindmap
     root((SeaSketch))
-        Diagrams
+        Diagrams((Diagrams))
             Flowchart
             Sequence
             Class
             State
-        Features
-            Syntax Highlighting
-            Live Preview
-            File Management
-        Export
+        Features(Features)
+            Syntax["**Syntax** highlighting"]
+            LivePreview["Live preview (1s debounce)"]
+            FileMgmt["File management"]
+        Export[Export]
             PNG
             SVG
             PDF`,
@@ -182,66 +286,77 @@ const sampleFiles: FileNode[] = [
     "Timeline",
     `timeline
     title History of Programming Languages
-    1957 : FORTRAN
-    1959 : COBOL
-    1972 : C
-    1983 : C++
-    1991 : Python
-    1995 : Java
-         : JavaScript
-         : PHP
-    2009 : Go
-    2014 : Swift
-         : Rust`,
+    section Early Foundations
+      1957 : FORTRAN
+      1959 : COBOL
+      1972 : C
+    section Modern OOP & Scripting
+      1983 : C++
+      1991 : Python
+      1995 : Java : JavaScript : PHP
+    section Modern Systems Era
+      2009 : Go
+      2014 : Swift : Rust`,
   ),
 
   sample(
     "gitgraph",
     "Git Graph",
-    `gitGraph
-    commit id: "Initial commit"
-    commit id: "Add README"
+    `gitGraph LR:
+    commit id: "init"
+    commit id: "docs" type: NORMAL
 
     branch develop
     checkout develop
-    commit id: "Feature A"
-    commit id: "Feature B"
+    commit id: "feat: dashboard" type: HIGHLIGHT
 
     branch feature/login
     checkout feature/login
-    commit id: "Login form"
-    commit id: "Auth middleware"
+    commit id: "feat: login ui"
+    commit id: "feat: auth middleware"
+
     checkout develop
-    merge feature/login id: "Merge login"
+    merge feature/login id: "merge-login" tag: "rc-1" type: REVERSE
+
+    branch release/1.0
+    checkout release/1.0
+    commit id: "chore: release notes"
 
     checkout main
-    merge develop id: "Release v1.0" tag: "v1.0"
-    commit id: "Hotfix"`,
+    merge release/1.0 id: "release-1.0" tag: "v1.0"
+    commit id: "hotfix: patch-1" type: HIGHLIGHT
+
+    checkout develop
+    cherry-pick id: "hotfix: patch-1"`,
   ),
 
   sample(
     "journey",
     "User Journey",
     `journey
-    title User Onboarding Experience
+    title Team Workspace Onboarding Journey
     section Discovery
-        Find website: 3: Visitor
-        Read landing page: 4: Visitor
-    section Sign Up
-        Click register: 5: Visitor
-        Fill in form: 3: User
-        Verify email: 2: User
-    section First Use
-        Complete tutorial: 4: User
-        Create first project: 5: User
-        Invite teammates: 4: User`,
+      Find website: 4: Visitor
+      Read feature and pricing page: 3: Visitor
+      Read use cases: 4: Visitor, Marketing
+    section Signup
+      Register with email: 5: Visitor
+      Verify email link: 2: User, System
+      Retry verification: 1: User, System, Support
+      First login success: 5: User
+    section First Value
+      Import starter template: 4: User
+      Create first Mermaid file: 5: User
+      Invite teammate: 3: User, Teammate
+      Finish first review: 4: User, Teammate`,
   ),
 
   sample(
     "quadrant",
     "Quadrant Chart",
-    `quadrantChart
-    title Product Feature Priority Matrix
+    `%%{init: {"quadrantChart": {"chartWidth": 640, "chartHeight": 520}} }%%
+    quadrantChart
+    title Feature Prioritization Matrix
     x-axis Low Effort --> High Effort
     y-axis Low Impact --> High Impact
     quadrant-1 Do Later
@@ -249,126 +364,132 @@ const sampleFiles: FileNode[] = [
     quadrant-3 Fill-ins
     quadrant-4 Major Projects
     Dark Mode: [0.25, 0.85]
-    Search: [0.45, 0.9]
-    Export PDF: [0.6, 0.75]
-    Offline Mode: [0.85, 0.8]
-    Notifications: [0.3, 0.4]
-    Analytics: [0.7, 0.55]
-    Themes: [0.2, 0.3]`,
+    Search: [0.45, 0.90]
+    Export PDF: [0.60, 0.75]
+    Offline Mode: [0.85, 0.80]
+    Notifications: [0.30, 0.40]
+    Analytics: [0.70, 0.55]
+    Themes: [0.20, 0.30]
+    AI Assistant: [0.68, 0.58]`,
   ),
 
   sample(
     "xychart",
     "XY Chart",
     `xychart-beta
-    title "Monthly Revenue (USD)"
+    title "Monthly Revenue: Actual vs Target"
     x-axis [Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec]
-    y-axis "Revenue ($K)" 0 --> 120
-    bar  [42, 55, 61, 73, 88, 95, 102, 98, 85, 79, 91, 110]
-    line [42, 55, 61, 73, 88, 95, 102, 98, 85, 79, 91, 110]`,
+    y-axis "Revenue ($K)" 0 --> 130
+    bar [42, 55, 61, 73, 88, 95, 102, 98, 85, 79, 91, 110]
+    line [45, 58, 64, 70, 82, 92, 100, 101, 90, 86, 96, 115]`,
   ),
 
   sample(
     "sankey",
     "Sankey Diagram",
     `sankey-beta
-Agricultural waste,Bio-conversion,124.7
-Bio-conversion,Liquid,0.6
-Bio-conversion,Losses,26.9
-Bio-conversion,Solid,280.3
-Bio-conversion,Gas,81.1
-Coal imports,Coal,11.6
-Coal reserves,Coal,63.9
-Coal,Solid,75.6
-Electricity grid,Industry,342.2
-Electricity grid,Heating and cooling,113.7
-Electricity grid,Road transport,37.8
-Electricity grid,Losses,56.7
-Gas imports,Ngas,40.7
-Gas reserves,Ngas,82.2
-Ngas,Gas,122.9
-Nuclear,Thermal generation,840.0
-Oil imports,Oil,504.3
-Oil reserves,Oil,107.7
-Oil,Liquid,611.9
-Solar PV,Electricity grid,59.9
-Thermal generation,Electricity grid,525.5
-Thermal generation,Losses,787.1
-Wind,Electricity grid,289.4`,
+Renewable,Grid,320
+Thermal,Grid,540
+Grid,Industry,420
+Grid,Transport,160
+Grid,Buildings,180
+Grid,Losses,100
+Thermal,Losses,220
+Gas,Industry,140
+Oil,Transport,260
+Solar,Renewable,90
+Wind,Renewable,130
+Hydro,Renewable,100`,
   ),
 
   sample(
     "block",
     "Block Diagram",
     `block-beta
-    columns 3
-    A["Client"] space B["Load Balancer"]
-    space space space
-    C["Server 1"] D["Server 2"] E["Server 3"]
-    space space space
-    F[("Database")] space G["Cache"]
+    columns 4
+    Client["Client"] space LB["Load Balancer"] space
+    space space space space
+    API1["API 1"] API2["API 2"] API3["API 3"] Cache[("Redis")]
+    space space space space
+    DB[("Primary DB")] space MQ["Message Queue"] Worker["Async Worker"]
 
-    A --> B
-    B --> C
-    B --> D
-    B --> E
-    C --> F
-    D --> F
-    E --> F
-    C --> G
-    D --> G`,
+    Client --> LB
+    LB --> API1
+    LB --> API2
+    LB --> API3
+    API1 --> DB
+    API2 --> DB
+    API3 --> DB
+    API1 --> Cache
+    API2 --> Cache
+    API3 --> MQ
+    MQ --> Worker
+    Worker --> DB`,
   ),
 
   sample(
     "architecture",
     "Architecture Diagram",
     `architecture-beta
-    group vpc(cloud)[VPC]
+    group public(cloud)[Public Subnet]
+    group private(cloud)[Private Subnet]
 
-    service cdn(internet)[CDN] in vpc
-    service lb(server)[Load Balancer] in vpc
-    service api1(server)[API Server 1] in vpc
-    service api2(server)[API Server 2] in vpc
-    service db(database)[Primary DB] in vpc
-    service cache(disk)[Redis Cache] in vpc
+    service cdn(internet)[CDN] in public
+    service lb(server)[Load Balancer] in public
+    junction api_hub in private
+
+    service api1(server)[API Server 1] in private
+    service api2(server)[API Server 2] in private
+    service db(database)[Primary DB] in private
+    service cache(disk)[Redis Cache] in private
 
     cdn:R --> L:lb
-    lb:R --> L:api1
-    lb:R --> L:api2
+    lb:R --> L:api_hub
+    api_hub:R --> L:api1
+    api_hub:R --> L:api2
+
     api1:R --> L:db
     api2:R --> L:db
-    api1:B --> T:cache
-    api2:B --> T:cache`,
+    api1:B <--> T:cache
+    api2:B <--> T:cache`,
   ),
 
   sample(
     "kanban",
     "Kanban",
-    `kanban
-    Todo
-        [Write unit tests]
-        [Update documentation]
-        [Code review for PR #42]
-    In Progress
-        id1[Implement dark mode]@{ assigned: 'alice' }
-        id2[Fix login bug]@{ assigned: 'bob', priority: 'High' }
-    Review
-        id3[Refactor database layer]@{ ticket: 'ISSUE-101' }
-    Done
-        id4[Setup CI/CD pipeline]
-        id5[Design system components]`,
+    `---
+config:
+  kanban:
+    ticketBaseUrl: 'https://example.atlassian.net/browse/#TICKET#'
+---
+kanban
+  Todo
+    id101[Write unit tests]@{ assigned: 'alice', priority: 'High', ticket: 'SEA-101' }
+    id102[Update documentation]@{ assigned: 'bob', priority: 'Low', ticket: 'SEA-102' }
+
+  [In progress]
+    id103[Implement dark mode]@{ assigned: 'alice', priority: 'Very High', ticket: 'SEA-103' }
+
+  Review
+    id104[Refactor database layer]@{ assigned: 'carol', priority: 'High', ticket: 'SEA-104' }
+
+  Done
+    id105[Setup CI/CD pipeline]@{ assigned: 'dave', priority: 'Very Low' }
+
+  [Can't reproduce]
+    id106[Intermittent login flicker]@{ assigned: 'qa', ticket: 'SEA-106', priority: 'Low' }`,
   ),
 
   sample(
     "packet",
     "Packet Diagram",
     `packet-beta
-    0-15: "Source Port"
-    16-31: "Destination Port"
-    32-63: "Sequence Number"
-    64-95: "Acknowledgment Number"
-    96-99: "Data Offset"
-    100-105: "Reserved"
+    +16: "Source Port"
+    +16: "Destination Port"
+    +32: "Sequence Number"
+    +32: "Acknowledgment Number"
+    +4: "Data Offset"
+    +6: "Reserved"
     106: "URG"
     107: "ACK"
     108: "PSH"
@@ -376,10 +497,10 @@ Wind,Electricity grid,289.4`,
     110: "SYN"
     111: "FIN"
     112-127: "Window Size"
-    128-143: "Checksum"
-    144-159: "Urgent Pointer"
-    160-191: "Options"
-    192-255: "Data"`,
+    +16: "Checksum"
+    +16: "Urgent Pointer"
+    +32: "Options"
+    +64: "Data (variable length)"`,
   ),
 ];
 
